@@ -4,6 +4,33 @@
 
 > 一切可以变现的都是资产。
 
+## 快速开始
+
+### 方式一：电脑直接使用（零安装）
+
+下载 [`app/index.html`](app/index.html)，双击用浏览器打开即可，数据保存在本机。
+
+### 方式二：安卓 APK
+
+前往 [Releases](../../releases) 下载最新版 APK，安装即用。数据保存在应用内，同样不上传。
+
+### 方式三：从源码运行
+
+```bash
+git clone https://github.com/FenrisulfrPro/open-ledger.git
+# 应用本体是纯静态单文件：app/index.html，无任何构建依赖
+```
+
+### 自行打包 APK
+
+```bash
+npm install
+npx cap sync android        # 同步 web 资源到安卓工程
+cd android && ./gradlew assembleRelease
+```
+
+或直接推送 `v*` 标签，GitHub Actions 会自动构建并发布到 Release。
+
 ## 界面一览
 
 ### 资产总览
@@ -44,33 +71,6 @@
 - **生命周期管理**：服役中 / 已退役 / 已卖出，卖出自动结算盈亏与真实成本
 - **心愿清单**：目标价 + 期限自动算每日攒钱额度，租 vs 买对比
 - **数据本地化**：所有数据仅存于本机，不上传任何服务器；支持 JSON 导出备份
-
-## 快速开始
-
-### 方式一：电脑直接使用（零安装）
-
-下载 [`app/index.html`](app/index.html)，双击用浏览器打开即可，数据保存在本机。
-
-### 方式二：安卓 APK
-
-前往 [Releases](../../releases) 下载最新版 APK，安装即用。数据保存在应用内，同样不上传。
-
-### 方式三：从源码运行
-
-```bash
-git clone https://github.com/FenrisulfrPro/open-ledger.git
-# 应用本体是纯静态单文件：app/index.html，无任何构建依赖
-```
-
-### 自行打包 APK
-
-```bash
-npm install
-npx cap sync android        # 同步 web 资源到安卓工程
-cd android && ./gradlew assembleRelease
-```
-
-或直接推送 `v*` 标签，GitHub Actions 会自动构建并发布到 Release。
 
 ## 技术栈
 
