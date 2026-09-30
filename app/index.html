@@ -535,7 +535,7 @@
     <h2>设置</h2>
     <div class="set-item" onclick="exportData()"><span>📤 导出数据 (JSON)</span><span class="r">备份用</span></div>
     <div class="set-item" onclick="document.getElementById('importInput').click()"><span>📥 导入数据 (JSON)</span><span class="r">覆盖当前数据</span></div>
-    <input type="file" id="importInput" accept=".json,application/json" style="display:none">
+    <input type="file" id="importInput" style="display:none">
     <div class="set-item" onclick="loadDemo()"><span>🧪 载入示例数据</span><span class="r">体验用</span></div>
     <div class="set-item" onclick="clearAll()"><span style="color:var(--up)">🗑 清空全部数据</span><span class="r">不可恢复</span></div>
     <div class="hint" style="margin-top:14px">数据仅保存在本机，不上传服务器。换机/重装前先「导出数据」备份，装好后「导入数据」恢复。· 有账 v1.0 (OpenLedger) · 开源个人资产管理工具</div>
@@ -1343,7 +1343,17 @@ function openSettings(){ openMask('maskSettings'); }
 async function exportData(){
   const json = JSON.stringify(db,null,2);
   const fname = 'youzhang-backup-'+today()+'.json';
-  // 安卓 APP 内：走系统分享（可保存到「文件」或发给自己），WebView 不支持 Blob 下载
+  // 1) 安卓 APP（Capacitor 原生）：写入缓存目录后调系统分享，可存到「文件」或发给自己
+  const P = window.Capacitor && window.Capacitor.Plugins;
+  if(P && P.Filesystem && P.Share){
+    try{
+      await P.Filesystem.writeFile({path:fname, data:json, directory:'CACHE', encoding:'UTF8'});
+      const uri = await P.Filesystem.getUri({path:fname, directory:'CACHE'});
+      await P.Share.share({title:fname, url:uri.uri, dialogTitle:'导出备份数据'});
+      return;
+    }catch(e){ /* 原生失败则走通用回退 */ }
+  }
+  // 2) 支持文件分享的浏览器（手机 Chrome 等）
   try{
     const file = new File([json], fname, {type:'application/json'});
     if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -1351,7 +1361,7 @@ async function exportData(){
       return;
     }
   }catch(e){ if(e && e.name==='AbortError') return; } // 用户取消分享
-  // 浏览器回退：直接下载
+  // 3) 桌面浏览器：直接下载
   const blob = new Blob([json], {type:'application/json'});
   const aEl = document.createElement('a');
   aEl.href = URL.createObjectURL(blob); aEl.download = fname; aEl.click();
