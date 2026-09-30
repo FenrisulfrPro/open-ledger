@@ -34,9 +34,12 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           sed -i "s/versionName \"[^\"]*\"/versionName \"${VERSION}\"/" android/app/build.gradle
-          CODE=$(echo "${GITHUB_REF_NAME#v}" | grep -oE '[0-9]+' | head -1)
-          sed -i "s/versionCode [0-9]*/versionCode ${CODE:-1}/" android/app/build.gradle
-          echo "versionName=${VERSION} versionCode=${CODE:-1}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1 | grep -oE '[0-9]+' | head -1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2 | grep -oE '[0-9]+' | head -1)
+          PATCH=$(echo "$VERSION" | cut -d. -f3 | grep -oE '[0-9]+' | head -1)
+          CODE=$(( ${MAJOR:-0}*10000 + ${MINOR:-0}*100 + ${PATCH:-0} ))
+          sed -i "s/versionCode [0-9]*/versionCode ${CODE}/" android/app/build.gradle
+          echo "versionName=${VERSION} versionCode=${CODE}"
 
       - name: Decode signing keystore
         id: keystore
