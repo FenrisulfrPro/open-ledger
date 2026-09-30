@@ -409,7 +409,7 @@
       <div class="f-item"><label>回购价格 ¥ *</label><input id="bbPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
       <div class="f-item"><label>回购日期</label><input id="bbDate" type="date"></div>
     </div>
-    <div class="hint">回购后资产恢复服役，按回购价与回购日期开始新一轮持有成本计算。</div>
+    <div class="hint">回购后接着原账本继续计算：回购价计入总投入，持有天数从最初购入日连续累计；回购价高于上次卖出价的部分（回购亏损）自动摊入持有成本。</div>
     <button class="btn" onclick="confirmBuyback()">确认回购</button>
     <button class="btn ghost" onclick="closeMask('maskBuyback')">取消</button>
   </div>
@@ -596,15 +596,19 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 /* 核心算法：真实日均成本 */
 function calc(a){
+  // 回购历史：buybacks 追加投入、priorSales 历史卖出回血，均计入总账
+  const buybackSum = (a.buybacks||[]).reduce((s,b)=>s+num(b.price),0);
+  const priorSellSum = (a.priorSales||[]).reduce((s,x)=>s+num(x.price),0);
   const end = a.status==='served' ? today() : (a.status==='retired' ? (a.retireDate||today()) : (a.sellDate||today()));
   const days = Math.max(1, daysBetween(a.buyDate, end));
-  const invested = num(a.price) + num(a.extra);
+  const invested = num(a.price) + num(a.extra) + buybackSum;
   let residual = 0, pnl = null;
-  if(a.status==='sold'){ residual = num(a.sellPrice); pnl = residual - invested; }
-  const netCost = invested - residual;
+  if(a.status==='sold'){ residual = num(a.sellPrice); pnl = (priorSellSum + residual) - invested; }
+  const recovered = priorSellSum + (a.status==='sold' ? num(a.sellPrice) : 0);
+  const netCost = invested - recovered;
   const daily = netCost / days;
-  const recovered = a.status==='sold' ? num(a.sellPrice) : 0;
-  return {days, invested, residual, netCost, daily, pnl, recovered,
+  const basisNet = num(a.price) + buybackSum - priorSellSum; // 构成图/净值口径：投入本金净额
+  return {days, invested, residual, netCost, daily, pnl, recovered, basisNet,
           hitTarget: a.target>0 && daily <= a.target && (a.status!=='served' ? true : days>7)};
 }
 function num(v){ v=parseFloat(v); return isFinite(v)?v:0; }
@@ -614,7 +618,7 @@ function renderDash(){
   const act = db.assets.filter(a=>a.status!=='sold' && a.status!=='retired');
   const carStatList = db.cars.map(c=>({c, s:carStats(c)}));
   const carResidual = carStatList.filter(x=>x.s.status==='served').reduce((s,x)=>s+x.s.residual,0);
-  const net = act.reduce((s,a)=>s+num(a.price),0) + carResidual;
+  const net = act.reduce((s,a)=>s+calc(a).basisNet,0) + carResidual;
   const invest = db.assets.reduce((s,a)=>s+calc(a).invested,0) + db.cars.reduce((s,c)=>s+num(c.profile.price),0);
   const recov = db.assets.reduce((s,a)=>s+calc(a).recovered,0) + db.cars.reduce((s,c)=>s+(c.profile.status==='sold'?num(c.profile.sellPrice):0),0);
   const days = db.assets.reduce((s,a)=>s+calc(a).days,0) + carStatList.reduce((s,x)=>s+x.s.days,0);
@@ -627,9 +631,9 @@ function renderDash(){
   document.getElementById('statSold').textContent = db.assets.filter(a=>a.status==='sold').length + db.cars.filter(c=>c.profile.status==='sold').length;
   document.getElementById('statDays').textContent = days;
 
-  // 构成图（含爱车，仅服役中）：资产按购入价计入（与净值口径一致），爱车按当前估值
+  // 构成图（含爱车，仅服役中）：资产按投入本金净额计入（购入价+回购-历史卖出回血），爱车按当前估值
   const byCat = {};
-  act.forEach(a=>{ const k=catOf(a.cat).name; byCat[k]=(byCat[k]||0)+num(a.price); });
+  act.forEach(a=>{ const k=catOf(a.cat).name; byCat[k]=(byCat[k]||0)+calc(a).basisNet; });
   if(carResidual>0) byCat['🚗 爱车'] = carResidual;
   const entries = Object.entries(byCat).filter(e=>e[1]>0).sort((x,y)=>y[1]-x[1]);
   const total = entries.reduce((s,e)=>s+e[1],0);
@@ -758,6 +762,8 @@ function setFilter(f){ filter=f; renderAssets(); }
 function openDetail(id){
   const a = db.assets.find(x=>x.id===id); if(!a) return;
   const c = calc(a), cat = catOf(a.cat);
+  const bbSum = (a.buybacks||[]).reduce((s,b)=>s+num(b.price),0);
+  const psSum = (a.priorSales||[]).reduce((s,x)=>s+num(x.price),0);
   let actions = `<div class="btn-row">
       <button class="btn ghost" onclick="openAssetForm('${a.id}')">编辑</button>
       ${a.status==='served'?`<button class="btn" onclick="openSell('${a.id}')">💰 卖出</button>
@@ -794,6 +800,8 @@ function openDetail(id){
       <div class="d-row"><span>购入价格</span><b>¥${fmt(a.price)}</b></div>
       <div class="d-row"><span>附加开销（保养/维修）</span><b>¥${fmt(a.extra)}</b></div>
       <div class="d-row"><span>总投入</span><b>¥${fmt(c.invested)}</b></div>
+      ${psSum?`<div class="d-row"><span>历史卖出回血（${(a.priorSales||[]).length} 次）</span><b>¥${fmt(psSum)}</b></div>`:''}
+      ${bbSum?`<div class="d-row"><span>回购追加投入（${(a.buybacks||[]).length} 次）</span><b>¥${fmt(bbSum)}</b></div>`:''}
       ${a.status==='sold'
         ? `<div class="d-row"><span>卖出价格（${a.sellDate||'—'}）</span><b>¥${fmt(a.sellPrice)}</b></div>
            <div class="d-row"><span>卖出回血</span><b>¥${fmt(c.residual)}</b></div>`
@@ -932,7 +940,7 @@ function confirmRetire(){
 }
 function unSold(id){ const a=db.assets.find(x=>x.id===id); a.status='served'; delete a.sellPrice; delete a.sellDate; save(); renderAll(); toast('已撤销卖出，恢复为服役中'); }
 function unRetire(id){ const a=db.assets.find(x=>x.id===id); a.status='served'; delete a.retireDate; save(); closeMask('maskDetail'); renderAll(); toast('已恢复为服役中'); }
-/* 回购：按回购价开启新一轮持有 */
+/* 回购：接着原账本继续计算，回购价计入总投入，持有天数从最初购入日连续累计 */
 function openBuyback(id){
   sellTarget={type:'asset',id}; document.getElementById('bbPrice').value='';
   document.getElementById('bbDate').value=today();
@@ -942,9 +950,16 @@ function confirmBuyback(){
   const p = parseFloat(document.getElementById('bbPrice').value);
   if(!(p>=0)) return toast('请填写回购价格');
   const a = db.assets.find(x=>x.id===sellTarget.id); if(!a) return;
-  a.status='served'; a.price=p; a.buyDate=document.getElementById('bbDate').value||today();
-  delete a.sellPrice; delete a.sellDate; delete a.retireDate;
-  save(); closeMask('maskBuyback'); renderAll(); toast('已回购，开始新一轮持有计算');
+  // 本次回购价 vs 上次卖出价，判断回购盈亏
+  const lastSell = a.sellPrice!=null ? num(a.sellPrice)
+                 : (a.priorSales && a.priorSales.length ? num(a.priorSales[a.priorSales.length-1].price) : null);
+  // 原卖出记录转入历史，回购价追加进总投入（购入价/购入日期/附加开销均不动）
+  if(a.sellPrice!=null){ a.priorSales = a.priorSales||[]; a.priorSales.push({date:a.sellDate, price:num(a.sellPrice)}); }
+  a.buybacks = a.buybacks||[]; a.buybacks.push({date:document.getElementById('bbDate').value||today(), price:p});
+  a.status='served'; delete a.sellPrice; delete a.sellDate; delete a.retireDate;
+  save(); closeMask('maskBuyback'); renderAll();
+  const diff = lastSell!=null ? p - lastSell : null;
+  toast('已回购 ¥'+fmt(p)+(diff==null?'':diff>0?` · 回购多付 ${fmt(diff)} 元，已计入持有成本`:` · 回购少付 ${fmt(Math.abs(diff))} 元`));
 }
 function carUnSold(id){
   const car = getCar(id); if(!car) return;
