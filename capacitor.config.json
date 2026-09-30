@@ -1,0 +1,11 @@
+{
+  "appId": "com.fenrisulfr.openledger",
+  "appName": "OpenLedger",
+  "webDir": "app",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

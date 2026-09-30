@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#f6f7fa">
+<title>有账 · 个人资产管理</title>
+<style>
+  :root{
+    --bg:#f6f7fa; --card:#ffffff; --ink:#1a1d26; --ink2:#6b7280; --ink3:#9aa1ad;
+    --line:#eef0f4; --accent:#4c6fff; --accent-soft:#edf1ff;
+    --gold:#c9962e; --gold-soft:#faf3e2;
+    --up:#e5484d; --down:#2ea97a; --warn:#f59e0b;
+    --radius:16px; --shadow:0 2px 12px rgba(26,29,38,.06);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); max-width:480px; margin:0 auto;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+  /* ===== 顶部 ===== */
+  .app-header{
+    position:sticky; top:0; z-index:50; background:linear-gradient(180deg,#fff 70%,rgba(255,255,255,0));
+    padding:14px 16px 10px; backdrop-filter:blur(8px);
+  }
+  .app-header .row{display:flex; align-items:center; justify-content:space-between}
+  .app-title{font-size:22px; font-weight:800; letter-spacing:.5px}
+  .app-title .dot{color:var(--accent)}
+  .icon-btn{
+    width:36px;height:36px;border-radius:12px;border:1px solid var(--line);background:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink2);cursor:pointer;
+  }
+  .net-value-card{
+    margin-top:10px; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:16px 18px; display:flex; align-items:flex-end; justify-content:space-between;
+  }
+  .net-value-card .label{font-size:12px;color:var(--ink3);margin-bottom:6px}
+  .net-value-card .value{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+  .net-value-card .value small{font-size:15px;font-weight:700;margin-right:2px;color:var(--ink2)}
+  .net-value-card .sub{text-align:right;font-size:11px;color:var(--ink3);line-height:1.9}
+  .net-value-card .sub b{font-variant-numeric:tabular-nums}
+  /* ===== 统计格 ===== */
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+  .stat-cell{background:var(--card);border-radius:14px;padding:10px 6px;text-align:center;box-shadow:var(--shadow)}
+  .stat-cell .num{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+  .stat-cell .txt{font-size:10px;color:var(--ink3);margin-top:3px}
+  /* ===== 区块 ===== */
+  .section{padding:16px 16px 0}
+  .section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .section-title h3{font-size:15px;font-weight:800}
+  .section-title .more{font-size:12px;color:var(--ink3)}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  /* 构成图 */
+  .mix-wrap{display:flex;align-items:center;gap:16px}
+  .legend{flex:1;display:flex;flex-direction:column;gap:8px}
+  .legend .item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+  .legend .sw{width:10px;height:10px;border-radius:3px;flex:none}
+  .legend .nm{flex:1}
+  .legend .pv{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:700}
+  /* 日均成本排行 */
+  .rank-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .rank-item:last-child{border-bottom:none}
+  .rank-item .emoji{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;overflow:hidden}
+  .rank-item .emoji img{width:100%;height:100%;object-fit:cover}
+  .rank-item .info{flex:1;min-width:0}
+  .rank-item .nm{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rank-item .meta{font-size:11px;color:var(--ink3);margin-top:2px}
+  .rank-item .cost{text-align:right;flex:none}
+  .rank-item .cost .v{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .rank-item .cost .d{font-size:10px;color:var(--ink3)}
+  .tag-ok{display:inline-block;font-size:9px;background:#e8f7f0;color:var(--down);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:1px;font-weight:700}
+  /* ===== 资产列表 ===== */
+  .filter-bar{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 2px;scrollbar-width:none}
+  .filter-bar::-webkit-scrollbar{display:none}
+  .chip{flex:none;padding:7px 14px;border-radius:20px;background:#fff;border:1px solid var(--line);font-size:12.5px;color:var(--ink2);cursor:pointer}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700}
+  .asset-card{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:14px;margin:0 16px 12px;display:flex;gap:12px;cursor:pointer;position:relative;overflow:hidden;
+  }
+  .asset-card .thumb{width:62px;height:62px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none;overflow:hidden}
+  .asset-card .thumb img{width:100%;height:100%;object-fit:cover}
+  .asset-card .mid{flex:1;min-width:0}
+  .asset-card .nm{font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px}
+  .asset-card .nm .st{font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 6px}
+  .st-serving{background:var(--accent-soft);color:var(--accent)}
+  .st-retired{background:#f1f2f5;color:var(--ink3)}
+  .st-sold{background:var(--gold-soft);color:var(--gold)}
+  .asset-card .meta{font-size:11px;color:var(--ink3);margin-top:4px}
+  .asset-card .nums{display:flex;gap:18px;margin-top:8px}
+  .asset-card .nums .b .v{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .asset-card .nums .b .l{font-size:10px;color:var(--ink3);margin-top:1px}
+  .asset-card .side{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end}
+  .asset-card .side .cat{font-size:10px;color:var(--ink3)}
+  .pbar{width:72px;height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:6px}
+  .pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#8ea5ff);border-radius:3px}
+  /* ===== 心愿 ===== */
+  .wish-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;margin:0 16px 12px}
+  .wish-card .top{display:flex;justify-content:space-between;align-items:center}
+  .wish-card .nm{font-size:14.5px;font-weight:800}
+  .wish-card .price{font-size:16px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+  .wish-card .row2{display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-top:8px}
+  .wish-card .row2 b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .wish-card .pbar{width:100%;margin-top:10px}
+  .wish-card .pbar i{background:linear-gradient(90deg,var(--gold),#e8c46a)}
+  .wish-done{opacity:.55}
+  /* ===== 底部导航 ===== */
+  .tabbar{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:60;
+    background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--ink3);cursor:pointer;width:64px}
+  .tab .ic{font-size:21px;line-height:1}
+  .tab.on{color:var(--ink);font-weight:700}
+  .fab{
+    position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+    width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;font-weight:300;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(76,111,255,.42);
+    border:5px solid var(--bg);cursor:pointer;z-index:61;line-height:1;
+  }
+  .page{display:none}
+  .page.on{display:block}
+  /* ===== 弹层 ===== */
+  .mask{position:fixed;inset:0;background:rgba(20,22,30,.45);z-index:90;display:none;align-items:flex-end;justify-content:center}
+  .mask.on{display:flex}
+  .sheet{
+    background:#fff;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;
+    border-radius:22px 22px 0 0;padding:18px 18px calc(24px + env(safe-area-inset-bottom));
+  }
+  .sheet h2{font-size:17px;font-weight:800;margin-bottom:14px;text-align:center}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .f-item{margin-bottom:10px}
+  .f-item.full{grid-column:1/-1}
+  .f-item label{display:block;font-size:11.5px;color:var(--ink2);margin-bottom:5px;font-weight:600}
+  .f-item input,.f-item select,.f-item textarea{
+    width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:14px;background:#fafbfc;color:var(--ink);outline:none;
+  }
+  .f-item input:focus,.f-item select:focus{border-color:var(--accent);background:#fff}
+  .cat-pick{display:flex;gap:8px;flex-wrap:wrap}
+  .cat-pick .c{padding:7px 12px;border-radius:10px;border:1px solid var(--line);font-size:12.5px;color:var(--ink2);cursor:pointer;background:#fafbfc}
+  .cat-pick .c.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:700}
+  .photo-box{
+    width:88px;height:88px;border-radius:14px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;
+    font-size:26px;color:var(--ink3);cursor:pointer;overflow:hidden;background:#fafbfc;position:relative;
+  }
+  .photo-box img{width:100%;height:100%;object-fit:cover}
+  .photo-box .del{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
+  .btn{
+    width:100%;padding:13px;border:none;border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;
+    background:var(--accent);color:#fff;
+  }
+  .btn.ghost{background:#f1f2f6;color:var(--ink2)}
+  .btn.danger{background:#fdeeee;color:var(--up)}
+  .btn-row{display:flex;gap:10px}
+  .btn-row .btn{flex:1}
+  /* 详情 */
+  .detail-head{display:flex;gap:14px;margin-bottom:14px}
+  .detail-head .thumb{width:84px;height:84px;border-radius:18px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;flex:none}
+  .detail-head .thumb img{width:100%;height:100%;object-fit:cover}
+  .detail-head .info h3{font-size:17px;font-weight:800}
+  .detail-head .info .meta{font-size:11.5px;color:var(--ink3);margin-top:5px;line-height:1.7}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .kpi{background:#fafbfc;border-radius:12px;padding:10px 6px;text-align:center}
+  .kpi .v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:10px;color:var(--ink3);margin-top:2px}
+  .kpi .v.up{color:var(--up)} .kpi .v.down{color:var(--down)}
+  .d-rows{border-top:1px solid var(--line);padding-top:10px}
+  .d-row{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;color:var(--ink2)}
+  .d-row b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .badge-retire{font-size:9px;background:#f1f2f5;color:var(--ink3);border-radius:5px;padding:1px 5px;font-weight:700}
+  /* 空态 */
+  .empty{text-align:center;padding:44px 0;color:var(--ink3)}
+  .empty .e{font-size:40px;margin-bottom:10px}
+  .empty p{font-size:13px}
+  /* 设置 */
+  .set-item{display:flex;justify-content:space-between;align-items:center;padding:14px 2px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer}
+  .set-item:last-child{border-bottom:none}
+  .set-item .r{color:var(--ink3);font-size:12px}
+  /* toast */
+  .toast{
+    position:fixed;top:18%;left:50%;transform:translateX(-50%);background:rgba(26,29,38,.88);color:#fff;
+    padding:10px 20px;border-radius:12px;font-size:13.5px;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;
+  }
+  .toast.show{opacity:1}
+  .hint{font-size:10.5px;color:var(--ink3);margin-top:4px;line-height:1.6}
+  .seg{display:flex;background:#f1f2f6;border-radius:11px;padding:3px;margin-bottom:12px}
+  .seg div{flex:1;text-align:center;padding:7px 0;font-size:12.5px;color:var(--ink2);border-radius:9px;cursor:pointer}
+  .seg div.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  /* ===== 爱车 ===== */
+  .car-hero{margin:0 0 12px;background:linear-gradient(135deg,#1f2430,#3a4358);border-radius:20px;padding:18px;color:#fff;box-shadow:0 6px 20px rgba(31,36,48,.25)}
+  .car-hero .top{display:flex;gap:14px;align-items:center}
+  .car-hero .thumb{width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;flex:none}
+  .car-hero .thumb img{width:100%;height:100%;object-fit:cover}
+  .car-hero .nm{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .car-hero .meta{font-size:11px;opacity:.72;margin-top:5px;line-height:1.7}
+  .car-hero .val{text-align:right}
+  .car-hero .val .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+  .car-hero .val .l{font-size:10px;opacity:.72;margin-top:2px}
+  .car-hero .edit-btn{margin-top:14px;display:flex;gap:8px}
+  .car-hero .ebtn{flex:1;text-align:center;padding:9px 0;border-radius:11px;background:rgba(255,255,255,.14);font-size:12.5px;font-weight:600;cursor:pointer}
+  .car-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+  .car-kpi{background:var(--card);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+  .car-kpi .v{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+  .car-kpi .v small{font-size:11px;font-weight:600;color:var(--ink3)}
+  .car-kpi .l{font-size:10.5px;color:var(--ink3);margin-top:3px}
+  .exp-row{display:flex;align-items:center;gap:10px;padding:8px 0}
+  .exp-row .nm{width:86px;font-size:12px;color:var(--ink2);flex:none}
+  .exp-row .bar{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+  .exp-row .bar i{display:block;height:100%;border-radius:4px}
+  .exp-row .amt{width:86px;text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+  .rec-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .rec-item:last-child{border-bottom:none}
+  .rec-item .em{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  .rec-item .info{flex:1;min-width:0}
+  .rec-item .t{font-size:13px;font-weight:700}
+  .rec-item .m{font-size:10.5px;color:var(--ink3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rec-item .amt{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+  /* ===== 陈列柜网格 ===== */
+  .gallery{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 8px}
+  .g-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;position:relative}
+  .g-card .img{position:relative;height:118px;background:#f3f4f7;display:flex;align-items:center;justify-content:center;font-size:44px}
+  .g-card .img img{width:100%;height:100%;object-fit:cover}
+  .g-card .img .st{position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:700;border-radius:6px;padding:2px 7px}
+  .g-card .body{padding:10px 12px 12px}
+  .g-card .nm{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .g-card .cost{font-size:15px;font-weight:800;color:var(--accent);margin-top:4px;font-variant-numeric:tabular-nums}
+  .g-card .cost small{font-size:10px;font-weight:600;color:var(--ink3)}
+  .g-card .cost.pnl-up{color:var(--up)} .g-card .cost.pnl-down{color:var(--down)}
+  .g-card .gbar{margin-top:8px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+  .g-card .gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#8ea5ff);border-radius:2px}
+  .g-card .days{font-size:9.5px;color:var(--ink3);margin-top:5px;display:flex;justify-content:space-between}
+  .g-ok{background:#e8f7f0;color:var(--down)}
+  .g-serving{background:var(--accent-soft);color:var(--accent)}
+  .g-retired{background:#f1f2f5;color:var(--ink3)}
+  .g-sold{background:var(--gold-soft);color:var(--gold)}
+  /* ===== 爱车卡片（资产页内） ===== */
+  .car-card{
+    margin:0 16px 14px;background:linear-gradient(135deg,#1f2430,#3a4358);border-radius:18px;padding:15px 16px;color:#fff;
+    box-shadow:0 6px 20px rgba(31,36,48,.25);cursor:pointer;display:flex;gap:13px;align-items:center;
+  }
+  .car-card .thumb{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:25px;overflow:visible;flex:none;position:relative}
+  .car-card .thumb img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+  .car-card .thumb .st{position:absolute;top:-7px;left:-7px;font-size:9px;padding:2px 6px;border-radius:6px;font-weight:700;white-space:nowrap}
+  .car-card.is-done{opacity:.75;filter:saturate(.55)}
+  .car-card .mid{flex:1;min-width:0}
+  .car-card .nm{font-size:14.5px;font-weight:800}
+  .car-card .meta{font-size:10.5px;opacity:.72;margin-top:4px}
+  .car-card .cost{text-align:right;flex:none}
+  .car-card .cost .v{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+  .car-card .cost .l{font-size:9.5px;opacity:.72;margin-top:2px}
+  .car-card.add{background:var(--card);color:var(--ink3);border:1.5px dashed var(--line);justify-content:center;box-shadow:none;font-size:13px;font-weight:600}
+  /* 统一添加面板 */
+  .add-opt{
+    display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;background:#fafbfc;
+    border:1px solid var(--line);cursor:pointer;margin-bottom:10px;
+  }
+  .add-opt .ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+  .add-opt .t{font-size:15px;font-weight:800}
+  .add-opt .d{font-size:11px;color:var(--ink3);margin-top:3px}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="row">
+    <div class="app-title">有账<span class="dot">.</span></div>
+    <div class="icon-btn" onclick="openSettings()">⚙︎</div>
+  </div>
+</header>
+
+<!-- ================= 资产（陈列柜首页） ================= -->
+<main class="page on" id="page-assets">
+  <div class="section" style="padding-top:4px">
+    <div class="net-value-card">
+      <div>
+        <div class="label">总资产净值（在持估值合计）</div>
+        <div class="value"><small>¥</small><span id="netValue">0.00</span></div>
+      </div>
+      <div class="sub">
+        累计投入 <b id="totalInvest">¥0</b><br>
+        已回血 <b id="totalRecovered">¥0</b> · 净消费 <b id="totalNetCost">¥0</b>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="num" id="statServing">0</div><div class="txt">服役中</div></div>
+      <div class="stat-cell"><div class="num" id="statRetired">0</div><div class="txt">已退役</div></div>
+      <div class="stat-cell"><div class="num" id="statSold">0</div><div class="txt">已卖出</div></div>
+      <div class="stat-cell"><div class="num" id="statDays">0</div><div class="txt">累计持有天数</div></div>
+    </div>
+  </div>
+  <div class="seg" style="margin:14px 16px 0" id="statusSeg"></div>
+  <div class="filter-bar" id="filterBar" style="padding-top:10px"></div>
+  <div style="height:12px"></div>
+  <div id="carCard"></div>
+  <div class="gallery" id="assetGrid"></div>
+</main>
+
+<!-- ================= 成本核算 ================= -->
+<main class="page" id="page-dash">
+  <div class="section">
+    <div class="section-title"><h3>资产构成</h3></div>
+    <div class="card">
+      <div class="mix-wrap">
+        <div id="mixChart"></div>
+        <div class="legend" id="mixLegend"></div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title"><h3>日均成本排行</h3><span class="more">买得贵，用得久就是赚</span></div>
+    <div class="card" id="rankList" style="padding:4px 16px"></div>
+  </div>
+  <div class="section">
+    <div class="section-title"><h3>本月复盘</h3></div>
+    <div class="card" id="monthReport"></div>
+  </div>
+</main>
+
+<!-- ================= 心愿 ================= -->
+<main class="page" id="page-wish">
+  <div class="section">
+    <div class="section-title"><h3>心愿清单</h3><span class="more" style="cursor:pointer" onclick="openWishForm()">+ 添加心愿</span></div>
+    <div id="wishList"></div>
+  </div>
+</main>
+
+<div class="fab" onclick="fabAction()">+</div>
+
+<nav class="tabbar">
+  <div class="tab on" data-tab="assets" onclick="switchTab('assets')"><span class="ic">◈</span>资产</div>
+  <div class="tab" data-tab="dash" onclick="switchTab('dash')"><span class="ic">◧</span>成本核算</div>
+  <div class="tab" data-tab="wish" onclick="switchTab('wish')"><span class="ic">☆</span>心愿</div>
+</nav>
+
+<!-- 资产 表单 -->
+<div class="mask" id="maskAsset">
+  <div class="sheet">
+    <h2 id="assetFormTitle">添加资产</h2>
+    <div class="f-item">
+      <label>物品照片</label>
+      <div class="photo-box" id="photoBox" onclick="pickPhoto()">📷<span class="hint" style="position:absolute;bottom:8px">拍照/选图</span></div>
+      <input type="file" id="photoInput" accept="image/*" style="display:none">
+    </div>
+    <div class="f-item">
+      <label>名称 *</label>
+      <input id="fName" placeholder="如：iPhone 15 Pro">
+    </div>
+    <div class="f-item">
+      <label>分类</label>
+      <div class="cat-pick" id="catPick"></div>
+    </div>
+    <div class="form-grid">
+      <div class="f-item"><label>购入价格 ¥ *</label><input id="fPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="f-item"><label>购入日期 *</label><input id="fBuyDate" type="date"></div>
+      <div class="f-item"><label>当前估值 ¥</label><input id="fValue" type="number" inputmode="decimal" placeholder="默认=购入价"></div>
+      <div class="f-item"><label>附加开销 ¥</label><input id="fExtra" type="number" inputmode="decimal" placeholder="保养/维修等"></div>
+      <div class="f-item"><label>目标日耗 ¥/天</label><input id="fTarget" type="number" inputmode="decimal" placeholder="回本线"></div>
+      <div class="f-item"><label>存放位置</label><input id="fPlace" placeholder="如：书桌抽屉"></div>
+    </div>
+    <div class="f-item"><label>标签（逗号分隔）</label><input id="fTags" placeholder="如：主力机, 轻摄影"></div>
+    <button class="btn" onclick="saveAsset()">保存</button>
+    <button class="btn ghost" onclick="closeMask('maskAsset')">取消</button>
+  </div>
+</div>
+
+<!-- 详情 -->
+<div class="mask" id="maskDetail">
+  <div class="sheet" id="detailSheet"></div>
+</div>
+
+<!-- 卖出 -->
+<div class="mask" id="maskSell">
+  <div class="sheet">
+    <h2>记录卖出</h2>
+    <div class="form-grid">
+      <div class="f-item"><label>卖出价格 ¥ *</label><input id="sPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="f-item"><label>卖出日期</label><input id="sDate" type="date"></div>
+    </div>
+    <div class="hint">卖出后自动计算盈亏与真实日均成本，资产归入「已卖出」。</div>
+    <button class="btn" onclick="confirmSell()">确认卖出</button>
+    <button class="btn ghost" onclick="closeMask('maskSell')">取消</button>
+  </div>
+</div>
+
+<!-- 退役 -->
+<div class="mask" id="maskRetire">
+  <div class="sheet">
+    <h2>退役（不再使用也不卖出）</h2>
+    <div class="form-grid">
+      <div class="f-item"><label>退役日期</label><input id="rDate" type="date"></div>
+    </div>
+    <div class="hint">退役后停止累计持有天数，估值按 0 计（残值归零，成本全部计入消费）。</div>
+    <button class="btn" onclick="confirmRetire()">确认退役</button>
+    <button class="btn ghost" onclick="closeMask('maskRetire')">取消</button>
+  </div>
+</div>
+
+<!-- 心愿表单 -->
+<div class="mask" id="maskWish">
+  <div class="sheet">
+    <h2 id="wishFormTitle">添加心愿</h2>
+    <div class="f-item"><label>想买什么 *</label><input id="wName" placeholder="如：Sony A7M5"></div>
+    <div class="form-grid">
+      <div class="f-item"><label>目标价格 ¥ *</label><input id="wPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="f-item"><label>目标期限</label><input id="wDeadline" type="date"></div>
+      <div class="f-item"><label>已攒 ¥</label><input id="wSaved" type="number" inputmode="decimal" placeholder="0"></div>
+      <div class="f-item"><label>月租金 ¥（可选）</label><input id="wRent" type="number" inputmode="decimal" placeholder="用于对比租赁"></div>
+    </div>
+    <div class="hint">填写期限后，自动计算「每天需攒多少钱」；填写租金后，对比买断与租赁的回本周期。</div>
+    <button class="btn" onclick="saveWish()">保存</button>
+    <button class="btn ghost" onclick="closeMask('maskWish')">取消</button>
+  </div>
+</div>
+
+<!-- 爱车抽屉 -->
+<div class="mask" id="maskCarView">
+  <div class="sheet" id="carSheet"></div>
+</div>
+
+<!-- 车辆档案 -->
+<div class="mask" id="maskCarProfile">
+  <div class="sheet">
+    <h2 id="carProfileTitle">设置我的爱车</h2>
+    <div class="f-item">
+      <label>车辆照片</label>
+      <div class="photo-box" id="carPhotoBox" onclick="pickCarPhoto()">🚗<span class="hint" style="position:absolute;bottom:8px">拍照/选图</span></div>
+      <input type="file" id="carPhotoInput" accept="image/*" style="display:none">
+    </div>
+    <div class="f-item"><label>车型名称 *</label><input id="cModel" placeholder="如：特斯拉 Model Y / 比亚迪 宋PLUS"></div>
+    <div class="f-item">
+      <label>车辆类型 *</label>
+      <div class="seg" style="margin-bottom:8px">
+        <div id="eSegGas" onclick="setEnergy('gas')">⛽ 油车</div>
+        <div id="eSegNew" onclick="setEnergy('new')">⚡ 新能源</div>
+        <div id="eSegMoto" onclick="setEnergy('moto')">🏍 摩托车</div>
+      </div>
+      <div class="seg" id="energySubSeg" style="display:none;margin-bottom:0">
+        <div id="eSubEv" onclick="setEnergyMode('ev')">纯电</div>
+        <div id="eSubPhev" onclick="setEnergyMode('phev')">混动</div>
+      </div>
+    </div>
+    <div class="f-item">
+      <label>车辆情况 *</label>
+      <div class="seg" style="margin-bottom:0">
+        <div id="uSegNew" onclick="setUsed(false)">新车</div>
+        <div id="uSegUsed" onclick="setUsed(true)">二手车</div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="f-item"><label>落地价 ¥ *</label><input id="cPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="f-item"><label>购入日期 *</label><input id="cBuyDate" type="date"></div>
+      <div class="f-item"><label>当前估值 ¥</label><input id="cValue" type="number" inputmode="decimal" placeholder="留空则自动估算"></div>
+      <div class="f-item"><label>预估年折旧率 %</label><input id="cDepRate" type="number" inputmode="decimal" placeholder="纯电/混动默认24 · 油车20 · 摩托22"></div>
+      <div class="f-item" id="buyOdoItem" style="display:none"><label>购入时表显里程 km</label><input id="cBuyOdo" type="number" inputmode="numeric" placeholder="0"></div>
+      <div class="f-item"><label>当前表显里程 km</label><input id="cCurOdo" type="number" inputmode="numeric" placeholder="最新里程"></div>
+    </div>
+    <div class="hint">油车/摩托车只有「加油」记账；纯电只有「充电」；混动两者都有。「当前估值」留空时按年折旧率自动估算残值（曲线仅作参考，可随时手动修正），卖出后成本自动变为精确值。默认折旧率依据中国汽车流通协会《2025年度中国汽车保值率报告》：纯电三年保值率约 41~45%、插混约 42~44%、燃油车约 50%+，对应年折旧 24% / 24% / 20%。行驶里程 = 当前表显 − 购入表显，记账填了里程会自动更新「当前表显」。</div>
+    <button class="btn" onclick="saveCarProfile()">保存</button>
+    <button class="btn ghost" onclick="closeMask('maskCarProfile')">取消</button>
+  </div>
+</div>
+
+<!-- 统一添加 -->
+<div class="mask" id="maskAdd">
+  <div class="sheet">
+    <h2>添加</h2>
+    <div class="add-opt" onclick="addPick('asset')">
+      <div class="ic" style="background:var(--accent-soft)">📦</div>
+      <div><div class="t">添加资产</div><div class="d">数码、硬通货、潮玩、奢品……进陈列柜</div></div>
+    </div>
+    <div class="add-opt" onclick="addPick('addcar')">
+      <div class="ic" style="background:var(--gold-soft)">🚗</div>
+      <div><div class="t">添加爱车 / 摩托车</div><div class="d">建立车辆档案，开始用车记账</div></div>
+    </div>
+    <div class="add-opt" id="addOptExp" style="display:none" onclick="addPick('exp')">
+      <div class="ic" style="background:#e8f7f0">⛽</div>
+      <div><div class="t">记一笔用车开销</div><div class="d">加油/充电、保养、保险、出游…</div></div>
+    </div>
+    <button class="btn ghost" onclick="closeMask('maskAdd')">取消</button>
+  </div>
+</div>
+
+<!-- 选车 -->
+<div class="mask" id="maskPickCar">
+  <div class="sheet">
+    <h2>给哪辆车记账？</h2>
+    <div id="pickCarList"></div>
+    <button class="btn ghost" onclick="closeMask('maskPickCar')">取消</button>
+  </div>
+</div>
+
+<!-- 用车记账 -->
+<div class="mask" id="maskCarExp">
+  <div class="sheet">
+    <h2 id="carExpTitle">记一笔用车开销</h2>
+    <div class="f-item">
+      <label>类型</label>
+      <div class="cat-pick" id="carTypePick"></div>
+    </div>
+    <div class="form-grid">
+      <div class="f-item"><label>金额 ¥ *</label><input id="eAmount" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="f-item"><label>日期</label><input id="eDate" type="date"></div>
+      <div class="f-item"><label>当时表显 km</label><input id="eOdo" type="number" inputmode="numeric" placeholder="选填"></div>
+      <div class="f-item"><label>备注</label><input id="eNote" placeholder="如：小保养+空调滤芯"></div>
+    </div>
+    <button class="btn danger" id="delExpBtn" style="display:none" onclick="delCurrentExp()">删除这笔开销</button>
+    <button class="btn" onclick="saveCarExp()">保存</button>
+    <button class="btn ghost" onclick="closeMask('maskCarExp')">取消</button>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="mask" id="maskSettings">
+  <div class="sheet">
+    <h2>设置</h2>
+    <div class="set-item" onclick="exportData()"><span>📤 导出数据 (JSON)</span><span class="r">备份用</span></div>
+    <div class="set-item" onclick="loadDemo()"><span>🧪 载入示例数据</span><span class="r">体验用</span></div>
+    <div class="set-item" onclick="clearAll()"><span style="color:var(--up)">🗑 清空全部数据</span><span class="r">不可恢复</span></div>
+    <div class="hint" style="margin-top:14px">数据仅保存在本机浏览器（localStorage），不上传服务器。换设备可通过「导出数据」备份。· 有账 v1.0 (OpenLedger) · 开源个人资产管理工具</div>
+    <button class="btn ghost" onclick="closeMask('maskSettings')">关闭</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 数据层 ================= */
+const CATS = [
+  {id:'digital', name:'数码', emoji:'📱', color:'#4c6fff'},
+  {id:'hard',    name:'硬通货', emoji:'🥇', color:'#c9962e'},
+  {id:'toys',    name:'潮玩收藏', emoji:'🧸', color:'#e5679b'},
+  {id:'lux',     name:'奢品腕表', emoji:'⌚', color:'#7a5af8'},
+  {id:'virtual', name:'虚拟资产', emoji:'🎮', color:'#2ea97a'},
+  {id:'other',   name:'其他', emoji:'📦', color:'#6b7280'},
+];
+const CAR_TYPES = [
+  {id:'charge', name:'充电',     emoji:'⚡', color:'#4c6fff', note:'充电度数，如：45.6 度'},
+  {id:'fuel',   name:'加油',     emoji:'⛽', color:'#f59e0b', note:'加油升数，如：45.6 升'},
+  {id:'maint',  name:'保养维修', emoji:'🔧', color:'#2ea97a', note:'如：小保养 + 更换空调滤芯'},
+  {id:'trip',   name:'出游开销', emoji:'🎫', color:'#e5679b', note:'如：景区门票 + 高速过路费'},
+  {id:'insure', name:'保险',     emoji:'🛡️', color:'#7a5af8', note:'如：交强险 + 商业险'},
+  {id:'mod',    name:'改装',     emoji:'🏁', color:'#c9962e', note:'如：贴膜 / 脚垫 / 改装件'},
+  {id:'other',  name:'其他',     emoji:'📎', color:'#6b7280', note:'填写备注'},
+];
+// 按车辆动力类型过滤记账类型：油车/摩托车无充电、纯电无加油、混动都有
+function carTypesFor(c){
+  const en = c?.profile?.energy || 'ev';
+  if(en==='ev') return CAR_TYPES.filter(t=>t.id!=='fuel');
+  return CAR_TYPES.filter(t=>t.id!=='charge'); // gas / moto
+}
+const LS_KEY = 'youzhang_data_v1';
+let db = {assets:[], wishes:[], cars:[], demo:false};
+let editId = null, editWishId = null, sellTarget = null, photoData = null, curCat = 'digital', filter = 'all';
+let editExpId = null, carFilter = 'all', curCarType = 'charge', carPhotoData = null;
+let curCarId = null, editCarId = null, curExpCarId = null;
+
+function load(){
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw) db = JSON.parse(raw); }catch(e){}
+  // 多车迁移：旧版 db.car 单车结构 → db.cars 数组
+  if(Array.isArray(db.cars)){ /* 新结构 */ }
+  else if(db.car && db.car.profile){ db.cars = [{id:'c'+Date.now(), profile:db.car.profile, expenses:db.car.expenses||[]}]; }
+  else db.cars = [];
+  delete db.car;
+  if(!db.assets) db.assets = [];
+  if(!db.wishes) db.wishes = [];
+  db.cars.forEach(c=>{ if(!c.profile.status) c.profile.status='served'; });
+}
+function getCar(id){ return db.cars.find(c=>c.id===id); }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+function catOf(id){ return CATS.find(c=>c.id===id) || CATS[5]; }
+function today(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.max(1, Math.round((new Date(b) - new Date(a))/86400000)); }
+function fmt(n){ return num(n).toLocaleString('zh-CN',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtKm(n){ return num(n).toLocaleString('zh-CN',{maximumFractionDigits:0}); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+/* 核心算法：真实日均成本 */
+function calc(a){
+  const end = a.status==='served' ? today() : (a.status==='retired' ? (a.retireDate||today()) : (a.sellDate||today()));
+  const days = daysBetween(a.buyDate, end);
+  const invested = num(a.price) + num(a.extra);
+  let residual, pnl = null;
+  if(a.status==='sold'){ residual = num(a.sellPrice); pnl = num(a.sellPrice) - invested; }
+  else if(a.status==='retired'){ residual = 0; }
+  else residual = num(a.value) > 0 ? num(a.value) : num(a.price);
+  const netCost = invested - residual;
+  const daily = netCost / days;
+  const recovered = num(a.status==='sold' ? a.sellPrice : (num(a.value)>0 ? num(a.value):0));
+  return {days, invested, residual, netCost, daily, pnl, recovered,
+          hitTarget: a.target>0 && daily <= a.target && (a.status!=='served' ? true : days>7)};
+}
+function num(v){ v=parseFloat(v); return isFinite(v)?v:0; }
+
+/* ================= 看板 ================= */
+function renderDash(){
+  const act = db.assets.filter(a=>a.status!=='sold' && a.status!=='retired');
+  const carStatList = db.cars.map(c=>({c, s:carStats(c)}));
+  const carResidual = carStatList.filter(x=>x.s.status==='served').reduce((s,x)=>s+x.s.residual,0);
+  const net = act.reduce((s,a)=>s+calc(a).residual,0) + carResidual;
+  const invest = db.assets.reduce((s,a)=>s+calc(a).invested,0) + db.cars.reduce((s,c)=>s+num(c.profile.price),0);
+  const recov = db.assets.reduce((s,a)=>s+calc(a).recovered,0) + db.cars.reduce((s,c)=>s+(c.profile.status==='sold'?num(c.profile.sellPrice):0),0);
+  const days = db.assets.reduce((s,a)=>s+calc(a).days,0) + carStatList.reduce((s,x)=>s+x.s.days,0);
+  document.getElementById('netValue').textContent = fmt(net);
+  document.getElementById('totalInvest').textContent = '¥'+fmt(invest);
+  document.getElementById('totalRecovered').textContent = '¥'+fmt(recov);
+  document.getElementById('totalNetCost').textContent = '¥'+fmt(invest-recov);
+  document.getElementById('statServing').textContent = db.assets.filter(a=>a.status==='served').length + db.cars.filter(c=>(c.profile.status||'served')==='served').length;
+  document.getElementById('statRetired').textContent = db.assets.filter(a=>a.status==='retired').length + db.cars.filter(c=>c.profile.status==='retired').length;
+  document.getElementById('statSold').textContent = db.assets.filter(a=>a.status==='sold').length + db.cars.filter(c=>c.profile.status==='sold').length;
+  document.getElementById('statDays').textContent = days;
+
+  // 构成图（含爱车，仅服役中）
+  const byCat = {};
+  act.forEach(a=>{ const k=catOf(a.cat).name; byCat[k]=(byCat[k]||0)+calc(a).residual; });
+  if(carResidual>0) byCat['🚗 爱车'] = carResidual;
+  const entries = Object.entries(byCat).filter(e=>e[1]>0).sort((x,y)=>y[1]-x[1]);
+  const total = entries.reduce((s,e)=>s+e[1],0);
+  const catColor = k => k==='🚗 爱车' ? '#3a4358' : (CATS.find(c=>c.name===k)?.color || '#6b7280');
+  const chartEl = document.getElementById('mixChart'), legendEl = document.getElementById('mixLegend');
+  if(!entries.length){ chartEl.innerHTML=''; legendEl.innerHTML='<div style="font-size:12px;color:var(--ink3)">暂无在持资产，点 + 添加第一件吧</div>'; }
+  else{
+    const R=52, C=2*Math.PI*R; let off=0, segs='';
+    entries.forEach(([k,v])=>{
+      const frac = v/total, len = frac*C;
+      segs += `<circle r="${R}" cx="66" cy="66" fill="none" stroke="${catColor(k)}" stroke-width="17"
+        stroke-dasharray="${len-2} ${C-len+2}" stroke-dashoffset="${-off}" transform="rotate(-90 66 66)" stroke-linecap="round"/>`;
+      off += len;
+    });
+    chartEl.innerHTML = `<svg width="132" height="132" viewBox="0 0 132 132">${segs}
+      <text x="66" y="62" text-anchor="middle" font-size="10" fill="#9aa1ad">净值</text>
+      <text x="66" y="80" text-anchor="middle" font-size="14" font-weight="800" fill="#1a1d26">¥${fmt(net)}</text></svg>`;
+    legendEl.innerHTML = entries.slice(0,6).map(([k,v])=>`
+      <div class="item"><span class="sw" style="background:${catColor(k)}"></span>
+      <span class="nm">${k}</span><span class="pv">¥${fmt(v)} · ${Math.round(v/total*100)}%</span></div>`).join('');
+  }
+
+  // 日均成本排行（在持资产 + 在持爱车）
+  let rank = db.assets.filter(a=>a.status==='served').map(a=>({a, daily:calc(a).daily, days:calc(a).days, netCost:calc(a).netCost}));
+  carStatList.filter(x=>x.s.status==='served').forEach(({c,s})=>{
+    rank.push({car:c, daily:s.daily, days:s.days, netCost:num(c.profile.price)-s.residual+s.totalExp});
+  });
+  rank = rank.sort((x,y)=>y.daily-x.daily).slice(0,5);
+  document.getElementById('rankList').innerHTML = rank.length ? rank.map(r=>{
+    const isCar = !!r.car;
+    const a = isCar ? r.car.profile : r.a;
+    const icon = isCar ? '🚗' : (a.photo?`<img src="${a.photo}">`:catOf(a.cat).emoji);
+    const click = isCar ? `openCarSheet('${r.car.id}')` : `openDetail('${a.id}')`;
+    const nm = isCar ? esc(a.model)+' <span class="tag-ok" style="background:#3a4358;color:#fff">爱车</span>'
+                     : esc(a.name)+(calc(a).hitTarget?'<span class="tag-ok">已回本</span>':'');
+    return `
+    <div class="rank-item" onclick="${click}">
+      <div class="emoji" ${isCar?'style="background:#3a4358"':''}>${icon}</div>
+      <div class="info"><div class="nm">${nm}</div>
+        <div class="meta">持有 ${r.days} 天 · 已消费 ¥${fmt(r.netCost)}</div></div>
+      <div class="cost"><div class="v">¥${fmt(r.daily)}</div><div class="d">${isCar?'日均持有成本':'日均成本'}</div></div>
+    </div>`;
+  }).join('') : '<div class="empty" style="padding:26px 0"><div class="e">◧</div><p>添加资产后，这里展示谁最「烧钱」</p></div>';
+
+  // 本月复盘
+  const m = today().slice(0,7);
+  const soldAssets = db.assets.filter(a=>a.status==='sold' && (a.sellDate||'').startsWith(m));
+  const soldCars = db.cars.filter(c=>c.profile.status==='sold' && (c.profile.sellDate||'').startsWith(m));
+  const pnlSum = soldAssets.reduce((s,a)=>s+calc(a).pnl,0) + soldCars.reduce((s,c)=>s+carStats(c).pnl,0);
+  const soldCnt = soldAssets.length + soldCars.length;
+  const soldCash = soldAssets.reduce((s,a)=>s+num(a.sellPrice),0) + soldCars.reduce((s,c)=>s+num(c.profile.sellPrice),0);
+  const idle = db.assets.filter(a=>a.status==='served' && a.target>0 && calc(a).daily > a.target*2).slice(0,3);
+  const carSpend = db.cars.length ? db.cars.reduce((s,c)=>s+c.expenses.filter(e=>(e.date||'').startsWith(m)).reduce((x,e)=>x+num(e.amount),0),0) : null;
+  document.getElementById('monthReport').innerHTML = `
+    <div class="d-row"><span>本月卖出</span><b>${soldCnt} 件</b></div>
+    <div class="d-row"><span>变现回血</span><b>¥${fmt(soldCash)}</b></div>
+    <div class="d-row"><span>变现盈亏</span><b style="color:${pnlSum>=0?'var(--up)':'var(--down)'}">${pnlSum>=0?'+':''}¥${fmt(pnlSum)}</b></div>
+    ${carSpend!==null?`<div class="d-row"><span>🚗 本月用车支出</span><b>¥${fmt(carSpend)}</b></div>`:''}
+    <div class="d-row"><span>超过目标日耗 2 倍的「烧钱件」</span><b>${idle.length?esc(idle.map(a=>a.name).join('、')):'暂无 👍'}</b></div>`;
+}
+function esc(s){ return String(s||'').replace(/[<>&"]/g, m=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[m])); }
+
+/* ================= 资产（陈列柜首页） ================= */
+function renderAssets(){
+  // 状态分类：服役中/已退役/已卖出
+  const segs = [['all','全部'],['served','服役中'],['retired','已退役'],['sold','已卖出']];
+  document.getElementById('statusSeg').innerHTML = segs.map(([k,n])=>
+    `<div class="${filter===k?'on':''}" onclick="setFilter('${k}')">${n}</div>`).join('');
+  // 品类筛选
+  const bar = document.getElementById('filterBar');
+  bar.innerHTML = CATS.map(c=>`<div class="chip ${filter==='cat:'+c.id?'on':''}" onclick="setFilter('cat:${c.id}')">${c.emoji} ${c.name}</div>`).join('');
+  // 爱车卡片（跟随状态筛选；品类筛选时只显示资产，不显示车）
+  const carStatus = f => (f.profile.status||'served');
+  let carShow = db.cars;
+  if(filter!=='all' && !filter.startsWith('cat:')) carShow = carShow.filter(c=>carStatus(c)===filter);
+  const carCards = carShow.map(c=>{
+    const s = carStats(c), p = c.profile, st = s.status;
+    const kindIcon = p.energy==='moto' ? '🏍' : '🚗';
+    const stBadge = st==='served' ? '' : st==='retired' ? '<span class="st g-retired">已退役</span>' : '<span class="st g-sold">已卖出</span>';
+    const right = st==='sold'
+      ? `<div class="cost"><div class="v" style="color:${s.pnl>=0?'#ffb4b4':'#8fe3b0'}">${s.pnl>=0?'+':''}¥${fmt(s.pnl)}</div><div class="l">卖出盈亏</div></div>`
+      : `<div class="cost"><div class="v">¥${fmt(s.daily)}</div><div class="l">日均持有成本/天</div></div>`;
+    return `<div class="car-card ${st!=='served'?'is-done':''}" onclick="openCarSheet('${c.id}')">
+      <div class="thumb">${p.photo?`<img src="${p.photo}">`:kindIcon}${stBadge}</div>
+      <div class="mid">
+        <div class="nm">${kindIcon} ${esc(p.model)}</div>
+        <div class="meta">持有 ${s.days} 天 · 行驶 ${fmtKm(s.odo)} km · 累计开销 ¥${fmt(s.totalExp)}</div>
+      </div>
+      ${right}
+    </div>`;
+  }).join('');
+  const showCarAdd = filter==='all' || filter==='served';
+  const carAdd = showCarAdd ? `<div class="car-card add" onclick="openCarProfileForm()">${db.cars.length?'🚗 + 再添加一辆车':'🚗 + 添加爱车，开始用车记账'}</div>` : '';
+  document.getElementById('carCard').innerHTML = (carCards || carAdd) ? carCards + carAdd : '';
+  // 陈列柜网格
+  let list = db.assets;
+  if(filter.startsWith('cat:')) list = list.filter(a=>a.cat===filter.slice(4));
+  else if(filter!=='all') list = list.filter(a=>a.status===filter);
+  list = list.slice().sort((a,b)=>(b.buyDate||'').localeCompare(a.buyDate||''));
+  document.getElementById('assetGrid').innerHTML = list.length ? list.map(a=>{
+    const c = calc(a), cat = catOf(a.cat);
+    const stBadge = a.status==='served'
+      ? (c.hitTarget?'<span class="st g-ok">已回本</span>':'')
+      : a.status==='retired' ? '<span class="st g-retired">已退役</span>' : '<span class="st g-sold">已卖出</span>';
+    const costHtml = a.status==='sold'
+      ? `<div class="cost ${c.pnl>=0?'pnl-up':'pnl-down'}">${c.pnl>=0?'+':''}¥${fmt(c.pnl)}<small> 卖出盈亏</small></div>`
+      : `<div class="cost">¥${fmt(c.daily)}<small> /天 日均成本</small></div>`;
+    const prog = Math.min(100, Math.max(6, c.residual/Math.max(c.invested,1)*100));
+    const endD = a.status==='served'?today():(a.status==='retired'?(a.retireDate||today()):(a.sellDate||today()));
+    return `<div class="g-card" onclick="openDetail('${a.id}')">
+      <div class="img">${a.photo?`<img src="${a.photo}">`:cat.emoji}${stBadge}</div>
+      <div class="body">
+        <div class="nm">${esc(a.name)}</div>
+        ${costHtml}
+        <div class="gbar"><i style="width:${prog}%"></i></div>
+        <div class="days"><span>${cat.emoji} ${cat.name}</span><span>持有 ${c.days} 天</span></div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty" style="grid-column:1/-1"><div class="e">📦</div><p>陈列柜空空如也<br>点下方 + 录入第一件资产</p></div>';
+}
+function setFilter(f){ filter=f; renderAssets(); }
+
+/* ================= 详情 ================= */
+function openDetail(id){
+  const a = db.assets.find(x=>x.id===id); if(!a) return;
+  const c = calc(a), cat = catOf(a.cat);
+  let actions = `<div class="btn-row">
+      <button class="btn ghost" onclick="openAssetForm('${a.id}')">编辑</button>
+      ${a.status==='served'?`<button class="btn" onclick="openSell('${a.id}')">💰 卖出</button>
+      <button class="btn ghost" onclick="openRetire('${a.id}')">退役</button>`:''}
+    </div>
+    <button class="btn danger" onclick="delAsset('${a.id}')">删除资产</button>`;
+  if(a.status==='sold'){
+    actions = `<div class="btn-row"><button class="btn ghost" onclick="openAssetForm('${a.id}')">编辑</button>
+      <button class="btn" onclick="unSold('${a.id}')">↩ 恢复为服役中</button></div>
+      <button class="btn danger" onclick="delAsset('${a.id}')">删除资产</button>`;
+  }
+  document.getElementById('detailSheet').innerHTML = `
+    <div class="detail-head">
+      <div class="thumb">${a.photo?`<img src="${a.photo}">`:cat.emoji}</div>
+      <div class="info">
+        <h3>${esc(a.name)}</h3>
+        <div class="meta">${cat.emoji} ${cat.name}${a.tags?' · '+esc(a.tags):''}<br>
+        ${a.buyDate} 购入 · 已陪伴 ${c.days} 天${a.place?'<br>📍 '+esc(a.place):''}</div>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">¥${fmt(c.daily)}</div><div class="l">日均成本</div></div>
+      <div class="kpi"><div class="v">¥${fmt(c.netCost)}</div><div class="l">已消费金额</div></div>
+      ${a.status==='sold'
+        ? `<div class="kpi"><div class="v ${c.pnl>=0?'up':'down'}">${c.pnl>=0?'+':''}¥${fmt(c.pnl)}</div><div class="l">卖出盈亏</div></div>`
+        : `<div class="kpi"><div class="v">${a.target>0?(c.hitTarget?'✅ 回本':Math.round(c.daily/a.target*100)+'%'):'—'}</div><div class="l">${a.target>0?'回本进度(目标¥'+a.target+'/天)':'未设目标日耗'}</div></div>`}
+    </div>
+    <div class="d-rows">
+      <div class="d-row"><span>购入价格</span><b>¥${fmt(a.price)}</b></div>
+      <div class="d-row"><span>附加开销（保养/维修）</span><b>¥${fmt(a.extra)}</b></div>
+      <div class="d-row"><span>总投入</span><b>¥${fmt(c.invested)}</b></div>
+      ${a.status==='sold'
+        ? `<div class="d-row"><span>卖出价格（${a.sellDate||'—'}）</span><b>¥${fmt(a.sellPrice)}</b></div>`
+        : `<div class="d-row"><span>当前估值</span><b>¥${fmt(num(a.value)>0?a.value:a.price)}</b></div>`}
+      <div class="d-row"><span>剩余残值 / 回血</span><b>¥${fmt(c.residual)}</b></div>
+      <div class="d-row"><span>资产状态</span><b>${a.status==='served'?'🟢 服役中':a.status==='retired'?'⚪ 已退役':'🟡 已卖出'}</b></div>
+    </div>
+    ${actions}
+    <button class="btn ghost" onclick="closeMask('maskDetail')">关闭</button>`;
+  openMask('maskDetail');
+}
+function delAsset(id){
+  if(!confirm('确定删除该资产？')) return;
+  db.assets = db.assets.filter(a=>a.id!==id); save(); closeMask('maskDetail'); renderAll(); toast('已删除');
+}
+function unSold(id){
+  const a = db.assets.find(x=>x.id===id); a.status='served'; delete a.sellPrice; delete a.sellDate;
+  save(); closeMask('maskDetail'); renderAll(); toast('已恢复为服役中');
+}
+
+/* ================= 表单 ================= */
+function renderCatPick(){
+  document.getElementById('catPick').innerHTML = CATS.map(c=>
+    `<div class="c ${curCat===c.id?'on':''}" onclick="setCat('${c.id}')">${c.emoji} ${c.name}</div>`).join('');
+}
+function setCat(id){ curCat=id; renderCatPick(); }
+function openAssetForm(id){
+  editId = id||null; photoData = null;
+  document.getElementById('assetFormTitle').textContent = id?'编辑资产':'添加资产';
+  const a = id ? db.assets.find(x=>x.id===id) : null;
+  curCat = a?a.cat:'digital'; renderCatPick();
+  document.getElementById('fName').value = a?.name||'';
+  document.getElementById('fPrice').value = a?.price??'';
+  document.getElementById('fBuyDate').value = a?.buyDate||today();
+  document.getElementById('fValue').value = a?.value??'';
+  document.getElementById('fExtra').value = a?.extra??'';
+  document.getElementById('fTarget').value = a?.target??'';
+  document.getElementById('fPlace').value = a?.place||'';
+  document.getElementById('fTags').value = a?.tags||'';
+  photoData = a?.photo||null; renderPhoto();
+  closeMask('maskDetail'); openMask('maskAsset');
+}
+function renderPhoto(){
+  const box = document.getElementById('photoBox');
+  box.innerHTML = photoData
+    ? `<img src="${photoData}"><div class="del" onclick="event.stopPropagation();removePhoto()">✕</div>`
+    : `📷<span class="hint" style="position:absolute;bottom:8px">拍照/选图</span>`;
+}
+function removePhoto(){ photoData=null; renderPhoto(); }
+function pickPhoto(){ document.getElementById('photoInput').click(); }
+document.getElementById('photoInput').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const max=360, sc=Math.min(1, max/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas'); cv.width=img.width*sc; cv.height=img.height*sc;
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      photoData = cv.toDataURL('image/jpeg',0.72); renderPhoto();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(f);
+});
+function saveAsset(){
+  const name = document.getElementById('fName').value.trim();
+  const price = parseFloat(document.getElementById('fPrice').value);
+  const buyDate = document.getElementById('fBuyDate').value;
+  if(!name) return toast('请填写名称');
+  if(!(price>0)) return toast('请填写有效的购入价格');
+  if(!buyDate) return toast('请选择购入日期');
+  const data = {
+    name, price, buyDate, cat:curCat,
+    value: parseFloat(document.getElementById('fValue').value)||0,
+    extra: parseFloat(document.getElementById('fExtra').value)||0,
+    target: parseFloat(document.getElementById('fTarget').value)||0,
+    place: document.getElementById('fPlace').value.trim(),
+    tags: document.getElementById('fTags').value.trim(),
+    photo: photoData,
+  };
+  if(editId){
+    const a = db.assets.find(x=>x.id===editId); Object.assign(a,data);
+  }else{
+    db.assets.push({id:'a'+Date.now(), status:'served', ...data});
+  }
+  save(); closeMask('maskAsset'); renderAll(); toast(editId?'已更新':'已添加 ✅');
+}
+
+/* 卖出 / 退役（资产与车辆共用弹层） */
+function openSell(id){
+  sellTarget={type:'asset',id}; document.getElementById('sPrice').value='';
+  document.getElementById('sDate').value=today();
+  closeMask('maskDetail'); openMask('maskSell');
+}
+function openCarSell(id){
+  sellTarget={type:'car',id}; document.getElementById('sPrice').value='';
+  document.getElementById('sDate').value=today();
+  closeMask('maskCarView'); openMask('maskSell');
+}
+function confirmSell(){
+  const p = parseFloat(document.getElementById('sPrice').value);
+  if(!(p>=0)) return toast('请填写卖出价格');
+  const date = document.getElementById('sDate').value||today();
+  if(sellTarget.type==='asset'){
+    const a = db.assets.find(x=>x.id===sellTarget.id);
+    a.status='sold'; a.sellPrice=p; a.sellDate=date;
+    const c=calc(a);
+    save(); closeMask('maskSell'); renderAll();
+    toast(`已记录 · ${c.pnl>=0?'盈':'亏'} ${fmt(Math.abs(c.pnl))} 元，真实日耗 ¥${fmt(c.daily)}/天`);
+  }else{
+    const car = getCar(sellTarget.id);
+    car.profile.status='sold'; car.profile.sellPrice=p; car.profile.sellDate=date;
+    const s=carStats(car);
+    save(); closeMask('maskSell'); renderAll();
+    toast(`车辆已卖出 · ${s.pnl>=0?'盈':'亏'} ${fmt(Math.abs(s.pnl))} 元，真实日均 ¥${fmt(s.daily)}/天`);
+  }
+}
+function openRetire(id){
+  sellTarget={type:'asset',id}; document.getElementById('rDate').value=today();
+  closeMask('maskDetail'); openMask('maskRetire');
+}
+function openCarRetire(id){
+  sellTarget={type:'car',id}; document.getElementById('rDate').value=today();
+  closeMask('maskCarView'); openMask('maskRetire');
+}
+function confirmRetire(){
+  const date = document.getElementById('rDate').value||today();
+  if(sellTarget.type==='asset'){
+    const a = db.assets.find(x=>x.id===sellTarget.id);
+    a.status='retired'; a.retireDate=date;
+    save(); closeMask('maskRetire'); renderAll(); toast('已退役');
+  }else{
+    const car = getCar(sellTarget.id);
+    car.profile.status='retired'; car.profile.retireDate=date;
+    save(); closeMask('maskRetire'); renderAll(); toast('车辆已退役');
+  }
+}
+function unSold(id){ const a=db.assets.find(x=>x.id===id); a.status='served'; delete a.sellPrice; delete a.sellDate; save(); renderAll(); toast('已恢复为服役中'); }
+function carUnSold(id){
+  const car = getCar(id); if(!car) return;
+  car.profile.status='served'; delete car.profile.sellPrice; delete car.profile.sellDate; delete car.profile.retireDate;
+  save(); renderAll(); openCarSheet(id); toast('已恢复为服役中');
+}
+
+/* ================= 心愿 ================= */
+function openWishForm(id){
+  editWishId = id||null;
+  document.getElementById('wishFormTitle').textContent = id?'编辑心愿':'添加心愿';
+  const w = id? db.wishes.find(x=>x.id===id):null;
+  document.getElementById('wName').value = w?.name||'';
+  document.getElementById('wPrice').value = w?.price??'';
+  document.getElementById('wDeadline').value = w?.deadline||'';
+  document.getElementById('wSaved').value = w?.saved??'';
+  document.getElementById('wRent').value = w?.rent??'';
+  openMask('maskWish');
+}
+function saveWish(){
+  const name = document.getElementById('wName').value.trim();
+  const price = parseFloat(document.getElementById('wPrice').value);
+  if(!name) return toast('请填写心愿名称');
+  if(!(price>0)) return toast('请填写目标价格');
+  const data = {name, price,
+    deadline: document.getElementById('wDeadline').value,
+    saved: parseFloat(document.getElementById('wSaved').value)||0,
+    rent: parseFloat(document.getElementById('wRent').value)||0};
+  if(editWishId){ Object.assign(db.wishes.find(x=>x.id===editWishId), data); }
+  else db.wishes.push({id:'w'+Date.now(), done:false, ...data});
+  save(); closeMask('maskWish'); renderAll(); toast('心愿已保存 ⭐');
+}
+function renderWish(){
+  const el = document.getElementById('wishList');
+  if(!db.wishes.length){ el.innerHTML='<div class="empty"><div class="e">☆</div><p>把想买的都放进来，算算每天要攒多少</p></div>'; return; }
+  el.innerHTML = db.wishes.map(w=>{
+    let dailyStr='—', prog=0, leaseStr='';
+    if(w.deadline){
+      const dl = daysBetween(today(), w.deadline);
+      dailyStr = '¥'+ (Math.max(1,num(w.price)-num(w.saved))/Math.max(dl,1)).toFixed(1) +'/天';
+      prog = num(w.saved)/w.price*100;
+    } else { prog = num(w.saved)/w.price*100; }
+    if(w.rent>0){
+      const daysToBreakEven = Math.ceil(w.price / w.rent);
+      leaseStr = `租 vs 买：连续租用超过 <b>${daysToBreakEven}</b> 天，买断更划算`;
+    }
+    return `<div class="wish-card ${w.done?'wish-done':''}">
+      <div class="top"><div class="nm">${esc(w.name)}</div><div class="price">¥${fmt(w.price)}</div></div>
+      <div class="row2"><span>目标期限 ${w.deadline||'未设'}</span><span>每日攒钱 <b>${dailyStr}</b></span></div>
+      <div class="row2"><span>已攒 ¥${fmt(w.saved)}</span><span>${Math.round(prog)}%</span></div>
+      <div class="pbar"><i style="width:${Math.min(100,prog)}%"></i></div>
+      ${leaseStr?`<div class="hint" style="margin-top:8px">${leaseStr}</div>`:''}
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn ghost" style="margin-top:0;padding:9px" onclick="wishSaveMore('${w.id}')">+ 记一笔攒钱</button>
+        ${w.done
+          ? `<button class="btn ghost" style="margin-top:0;padding:9px" onclick="wishReopen('${w.id}')">取消完成</button>`
+          : `<button class="btn" style="margin-top:0;padding:9px" onclick="wishDone('${w.id}')">已买入 ✅</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+function wishSaveMore(id){
+  const w = db.wishes.find(x=>x.id===id);
+  const v = prompt('本次攒了多少元？', '100');
+  if(v===null) return;
+  w.saved = num(w.saved) + (parseFloat(v)||0);
+  if(w.saved>=w.price) w.done=true;
+  save(); renderAll(); toast('攒钱 +¥'+fmt(parseFloat(v)||0));
+}
+function wishDone(id){ const w=db.wishes.find(x=>x.id===id); w.done=true; save(); renderAll(); toast('恭喜拔草 🎉'); }
+function wishReopen(id){ const w=db.wishes.find(x=>x.id===id); w.done=false; save(); renderAll(); }
+
+/* ================= 爱车模块 ================= */
+function carTypeOf(id){ return CAR_TYPES.find(t=>t.id===id) || CAR_TYPES[6]; }
+
+// 默认年折旧率，依据中国汽车流通协会×精真估《2025年度中国汽车保值率报告》：
+// 纯电三年保值率≈41~45%、插混≈42~44%、燃油车≈50%+（头部纯电车型一年约打7折）
+// 指数拟合：(1-r)^3≈保值率 → 纯电/插混 r≈24%，油车 r≈20%，摩托车参考行情取 22%
+function defaultDepRate(energy){ return energy==='moto' ? 22 : (energy==='gas' ? 20 : 24); }
+
+/*
+  日均持有成本 = 日均现金开销 + 日均折旧
+  - 现金开销是确定发生的硬数据；
+  - 折旧 = 落地价 − 当前残值，残值手动估值优先；
+    未手动估值时按年折旧率曲线自动估算：residual = price × (1−r)^(天数/365)，残值保底 5%；
+  - 卖出后折旧变为已实现，数字即为精确值。
+*/
+function carStats(c){
+  const p = c.profile;
+  const status = p.status||'served';
+  const endD = status==='sold' ? (p.sellDate||today()) : status==='retired' ? (p.retireDate||today()) : today();
+  const days = Math.max(1, daysBetween(p.buyDate, endD));
+  const byType = {};
+  let totalExp = 0;
+  // 只统计持有期内的开销（卖出/退役日期之后的账单不计入成本）
+  c.expenses.filter(e=>!e.date || e.date<=endD).forEach(e=>{ byType[e.type]=(byType[e.type]||0)+num(e.amount); totalExp += num(e.amount); });
+  const energyExp = (byType.charge||0) + (byType.fuel||0);
+  const depRate = num(p.depRate)>0 ? num(p.depRate) : defaultDepRate(p.energy);
+  let residual, autoVal = false, pnl = null;
+  if(status==='sold'){ residual = num(p.sellPrice); pnl = num(p.sellPrice) - num(p.price); }
+  else if(status==='retired'){ residual = 0; }
+  else if(num(p.value) > 0){ residual = num(p.value); }
+  else{
+    residual = Math.max(num(p.price)*0.05, num(p.price) * Math.pow(1-depRate/100, days/365));
+    autoVal = true;
+  }
+  const odo = Math.max(0, num(p.curOdo) - num(p.buyOdo));
+  const daily = (num(p.price) - residual + totalExp) / days;
+  return {status, days, byType, totalExp, energyExp, residual, odo, daily, autoVal, depRate, pnl,
+          cashDaily: totalExp/days, depDaily: (num(p.price)-residual)/days,
+          perKm: odo>0 ? totalExp/odo : 0,
+          energyPerKm: odo>0 ? energyExp/odo : 0};
+}
+function energyLabel(en){ return en==='gas'?'⛽ 油车':en==='moto'?'🏍 摩托车':en==='phev'?'🔋 混动':'⚡ 纯电'; }
+function energyPayName(en){ return en==='ev' ? '充电' : (en==='phev' ? '充/加油' : '加油'); }
+
+function openCarSheet(carId){
+  const c = getCar(carId || curCarId);
+  if(!c){ openCarProfileForm(); return; }
+  curCarId = c.id;
+  const p = c.profile, s = carStats(c);
+  const types = carTypesFor(c);
+  const chips = [['all','全部'], ...types.map(t=>[t.id,t.name])];
+  let list = c.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(carFilter!=='all') list = list.filter(e=>e.type===carFilter);
+  const maxType = Math.max(1, ...types.map(t=>s.byType[t.id]||0));
+  const bars = types.filter(t=>s.byType[t.id]).map(t=>`
+    <div class="exp-row"><span class="nm">${t.emoji} ${t.name}</span>
+      <span class="bar"><i style="width:${Math.round(s.byType[t.id]/maxType*100)}%;background:${t.color}"></i></span>
+      <span class="amt">¥${fmt(s.byType[t.id])}</span></div>`).join('')
+    || '<div class="hint" style="text-align:center;padding:8px 0">暂无开销记录</div>';
+  const kindIcon = p.energy==='moto' ? '🏍' : '🚗';
+  const valLabel = s.autoVal ? `估算值(年折旧${s.depRate}%)` : '当前估值';
+  const stTxt = s.status==='served'?'':s.status==='retired'?' · 已退役':' · 已卖出';
+  // 卖出后展示成交与盈亏信息条
+  const soldInfo = s.status==='sold' ? `
+    <div class="card" style="box-shadow:none;border:1px solid var(--line);margin:0 0 12px">
+      <div class="d-row"><span>卖出日期</span><b>${p.sellDate||'—'}</b></div>
+      <div class="d-row"><span>成交价</span><b>¥${fmt(p.sellPrice)}</b></div>
+      <div class="d-row"><span>卖出盈亏（落地价 vs 成交价）</span><b style="color:${s.pnl>=0?'var(--up)':'var(--down)'}">${s.pnl>=0?'+':''}¥${fmt(s.pnl)}</b></div>
+      <div class="d-row"><span>真实日均持有成本</span><b>¥${fmt(s.daily)}/天</b></div>
+    </div>` : '';
+  const statusBtns = s.status==='served'
+    ? `<div class="ebtn" onclick="openCarSell('${c.id}')">💰 卖出</div>
+       <div class="ebtn" onclick="openCarRetire('${c.id}')">退役</div>`
+    : `<div class="ebtn" onclick="carUnSold('${c.id}')">↩ 恢复为服役中</div>`;
+  document.getElementById('carSheet').innerHTML = `
+    <div class="car-hero">
+      <div class="top">
+        <div class="thumb">${p.photo?`<img src="${p.photo}">`:kindIcon}</div>
+        <div style="flex:1;min-width:0">
+          <div class="nm">${esc(p.model)}</div>
+          <div class="meta">${energyLabel(p.energy)}${p.used?' · 二手车':''}${stTxt} · ${p.buyDate} 购入 · 已陪伴 ${s.days} 天<br>
+            表显 ${fmtKm(s.odo+num(p.buyOdo))} km</div>
+        </div>
+        <div class="val"><div class="v">${s.status==='sold'?'¥'+fmt(p.sellPrice):'¥'+fmt(s.residual)}</div><div class="l">${s.status==='sold'?'成交价':valLabel}</div></div>
+      </div>
+      <div class="edit-btn">
+        ${s.status==='served'?`<div class="ebtn" onclick="openCarExpForm('${c.id}')">➕ 记一笔</div>`:''}
+        <div class="ebtn" onclick="openCarProfileForm('${c.id}')">✎ 编辑车辆</div>
+        ${statusBtns}
+      </div>
+    </div>
+    ${soldInfo}
+    <div class="car-kpis" style="margin:0 0 8px">
+      <div class="car-kpi"><div class="v">¥${fmt(s.totalExp)}</div><div class="l">累计用车开销</div></div>
+      <div class="car-kpi"><div class="v">¥${fmt(s.daily)}<small>/天</small></div><div class="l">日均持有成本（现金+折旧）</div></div>
+      <div class="car-kpi"><div class="v">¥${fmt(s.perKm)}<small>/km</small></div><div class="l">每公里综合成本（已行驶 ${fmtKm(s.odo)} km）</div></div>
+      <div class="car-kpi"><div class="v">¥${fmt(s.energyPerKm)}<small>/km</small></div><div class="l">每公里能耗（${energyPayName(p.energy)} ¥${fmt(s.energyExp)}）</div></div>
+    </div>
+    <div class="hint" style="margin:0 2px 12px">成本拆解：日均现金开销 ¥${fmt(s.cashDaily)} + 日均折旧 ¥${fmt(s.depDaily)}（折旧基于${s.autoVal?`年折旧率 ${s.depRate}% 自动估算`:'手动估值'}，卖出后转为精确值）</div>
+    <div style="margin-bottom:12px">
+      <div class="section-title"><h3 style="font-size:14px">开销构成</h3></div>
+      <div class="card" style="box-shadow:none;border:1px solid var(--line)">${bars}</div>
+    </div>
+    <div>
+      <div class="section-title"><h3 style="font-size:14px">用车账本</h3><span class="more">${c.expenses.length} 笔</span></div>
+      <div class="filter-bar" style="padding:0 0 10px">
+        ${chips.map(([k,n])=>`<div class="chip ${carFilter===k?'on':''}" onclick="setCarFilter('${k}')">${n}</div>`).join('')}
+      </div>
+      <div class="card" style="box-shadow:none;border:1px solid var(--line);padding:6px 16px">
+        ${list.length ? list.map(e=>{
+          const t = carTypeOf(e.type);
+          return `<div class="rec-item" onclick="event.stopPropagation();openCarExpForm('${c.id}','${e.id}')">
+            <div class="em" style="background:${t.color}1f">${t.emoji}</div>
+            <div class="info"><div class="t">${t.name}${e.note?' · '+esc(e.note):''}</div>
+              <div class="m">${e.date||'—'}${e.odo?' · 表显 '+fmtKm(e.odo)+' km':''}</div></div>
+            <div class="amt">¥${fmt(e.amount)}</div>
+          </div>`;
+        }).join('') : '<div class="empty" style="padding:24px 0"><p>暂无记录，点上方 ➕ 记一笔</p></div>'}
+      </div>
+    </div>
+    <button class="btn danger" onclick="delCar('${c.id}')">删除这辆车及其全部账本</button>
+    <button class="btn ghost" onclick="closeMask('maskCarView')">关闭</button>`;
+  openMask('maskCarView');
+}
+function setCarFilter(f){ carFilter=f; if(curCarId) openCarSheet(curCarId); }
+function delCar(carId){
+  const c = getCar(carId); if(!c) return;
+  if(!confirm(`删除「${c.profile.model}」及其全部 ${c.expenses.length} 笔账单？不可恢复！`)) return;
+  db.cars = db.cars.filter(x=>x.id!==carId);
+  save(); closeMask('maskCarView'); renderAll(); toast('车辆已删除');
+}
+
+/* 车辆档案 */
+let tmpEnergy = 'new', tmpEnergyMode = 'ev', tmpUsed = false; // tmpEnergy: gas|new|moto; mode: ev|phev
+function renderEnergySegs(){
+  document.getElementById('eSegGas').classList.toggle('on', tmpEnergy==='gas');
+  document.getElementById('eSegNew').classList.toggle('on', tmpEnergy==='new');
+  document.getElementById('eSegMoto').classList.toggle('on', tmpEnergy==='moto');
+  document.getElementById('energySubSeg').style.display = tmpEnergy==='new' ? 'flex' : 'none';
+  document.getElementById('eSubEv').classList.toggle('on', tmpEnergyMode==='ev');
+  document.getElementById('eSubPhev').classList.toggle('on', tmpEnergyMode==='phev');
+  document.getElementById('uSegNew').classList.toggle('on', !tmpUsed);
+  document.getElementById('uSegUsed').classList.toggle('on', tmpUsed);
+  document.getElementById('buyOdoItem').style.display = tmpUsed ? 'block' : 'none';
+  document.getElementById('cDepRate').placeholder = tmpEnergy==='new' ? '默认 24 %/年' : tmpEnergy==='gas' ? '默认 20 %/年' : '默认 22 %/年';
+}
+function setEnergy(v){ tmpEnergy=v; renderEnergySegs(); }
+function setEnergyMode(v){ tmpEnergyMode=v; renderEnergySegs(); }
+function setUsed(v){ tmpUsed=v; renderEnergySegs(); }
+function openCarProfileForm(carId){
+  editCarId = carId || null;
+  const c = editCarId ? getCar(editCarId) : null;
+  const p = c?.profile;
+  document.getElementById('carProfileTitle').textContent = p?'编辑车辆':'添加爱车';
+  document.getElementById('cModel').value = p?.model||'';
+  document.getElementById('cPrice').value = p?.price??'';
+  document.getElementById('cBuyDate').value = p?.buyDate||today();
+  document.getElementById('cValue').value = p?.value??'';
+  document.getElementById('cDepRate').value = p?.depRate??'';
+  document.getElementById('cBuyOdo').value = p?.buyOdo??'';
+  document.getElementById('cCurOdo').value = p?.curOdo??'';
+  tmpEnergy = p?.energy==='gas' ? 'gas' : p?.energy==='moto' ? 'moto' : p ? 'new' : 'new';
+  tmpEnergyMode = p?.energy==='phev' ? 'phev' : 'ev';
+  tmpUsed = !!p?.used;
+  carPhotoData = p?.photo||null; renderCarPhoto();
+  renderEnergySegs();
+  openMask('maskCarProfile');
+}
+function renderCarPhoto(){
+  const box = document.getElementById('carPhotoBox');
+  box.innerHTML = carPhotoData
+    ? `<img src="${carPhotoData}"><div class="del" onclick="event.stopPropagation();removeCarPhoto()">✕</div>`
+    : `🚗<span class="hint" style="position:absolute;bottom:8px">拍照/选图</span>`;
+}
+function removeCarPhoto(){ carPhotoData=null; renderCarPhoto(); }
+function pickCarPhoto(){ document.getElementById('carPhotoInput').click(); }
+document.getElementById('carPhotoInput').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const max=360, sc=Math.min(1, max/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas'); cv.width=img.width*sc; cv.height=img.height*sc;
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      carPhotoData = cv.toDataURL('image/jpeg',0.72); renderCarPhoto();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(f);
+});
+function saveCarProfile(){
+  const model = document.getElementById('cModel').value.trim();
+  const price = parseFloat(document.getElementById('cPrice').value);
+  const buyDate = document.getElementById('cBuyDate').value;
+  if(!model) return toast('请填写车型名称');
+  if(!(price>0)) return toast('请填写落地价');
+  if(!buyDate) return toast('请选择购入日期');
+  const data = {model, price, buyDate,
+    value: parseFloat(document.getElementById('cValue').value)||0,
+    depRate: parseFloat(document.getElementById('cDepRate').value)||0,
+    energy: tmpEnergy==='gas' ? 'gas' : tmpEnergy==='moto' ? 'moto' : (tmpEnergyMode==='phev' ? 'phev' : 'ev'),
+    used: tmpUsed,
+    buyOdo: tmpUsed ? (parseFloat(document.getElementById('cBuyOdo').value)||0) : 0,
+    curOdo: parseFloat(document.getElementById('cCurOdo').value)||0,
+    photo: carPhotoData};
+  if(editCarId){
+    Object.assign(getCar(editCarId).profile, data);
+  }else{
+    const c = {id:'c'+Date.now(), profile:data, expenses:[]};
+    db.cars.push(c); editCarId = c.id;
+  }
+  save(); closeMask('maskCarProfile'); renderAll();
+  if(document.getElementById('maskCarView').classList.contains('on')) openCarSheet(editCarId);
+  toast(editCarId?'车辆已更新 🚗':'爱车已添加 🚗');
+}
+
+/* 用车记账 */
+function renderTypePick(){
+  const c = getCar(curExpCarId); if(!c) return;
+  const types = carTypesFor(c);
+  if(!types.find(t=>t.id===curCarType)) curCarType = types[0].id;
+  document.getElementById('carTypePick').innerHTML = types.map(t=>
+    `<div class="c ${curCarType===t.id?'on':''}" onclick="setCarType('${t.id}')">${t.emoji} ${t.name}</div>`).join('');
+  document.getElementById('eNote').placeholder = carTypeOf(curCarType).note;
+}
+function openCarExpForm(carId, id){
+  const c = getCar(carId || (db.cars.length===1 ? db.cars[0].id : curExpCarId));
+  if(!c){ openCarProfileForm(); return; }
+  // 已卖出/已退役的车辆不允许新增账单（编辑历史账单仍可）
+  if(!id && (c.profile.status==='sold' || c.profile.status==='retired')) return toast(c.profile.status==='sold'?'车辆已卖出，不能再记账':'车辆已退役，不能再记账');
+  curExpCarId = c.id;
+  editExpId = id||null;
+  document.getElementById('carExpTitle').textContent = id?'编辑开销':`记一笔 · ${c.profile.model}`;
+  const e = id? c.expenses.find(x=>x.id===id) : null;
+  curCarType = e?.type||'charge';
+  renderTypePick();
+  document.getElementById('eAmount').value = e?.amount??'';
+  document.getElementById('eDate').value = e?.date||today();
+  document.getElementById('eOdo').value = e?.odo??'';
+  document.getElementById('eNote').value = e?.note||'';
+  document.getElementById('delExpBtn').style.display = id?'block':'none';
+  openMask('maskCarExp');
+}
+function delCurrentExp(){ if(editExpId) delCarExp(curExpCarId, editExpId); closeMask('maskCarExp'); }
+function setCarType(id){ curCarType=id; renderTypePick(); }
+function saveCarExp(){
+  const c = getCar(curExpCarId); if(!c) return;
+  const amount = parseFloat(document.getElementById('eAmount').value);
+  if(!(amount>0)) return toast('请填写金额');
+  const odo = parseFloat(document.getElementById('eOdo').value)||0;
+  const data = {type:curCarType, amount,
+    date: document.getElementById('eDate').value||today(),
+    odo, note: document.getElementById('eNote').value.trim()};
+  if(editExpId){ Object.assign(c.expenses.find(x=>x.id===editExpId), data); }
+  else c.expenses.push({id:'e'+Date.now(), ...data});
+  // 记账里程大于当前表显时自动更新
+  if(odo>0 && (!c.profile.curOdo || odo > c.profile.curOdo)) c.profile.curOdo = odo;
+  save(); closeMask('maskCarExp'); renderAll();
+  if(document.getElementById('maskCarView').classList.contains('on')) openCarSheet(c.id);
+  toast(`已记录 ¥${fmt(amount)} · ${c.profile.model}`);
+}
+function delCarExp(carId, id){
+  const c = getCar(carId); if(!c) return;
+  if(!confirm('删除这笔开销？')) return;
+  c.expenses = c.expenses.filter(e=>e.id!==id);
+  save(); renderAll();
+  if(document.getElementById('maskCarView').classList.contains('on')) openCarSheet(carId);
+  toast('已删除');
+}
+
+/* ================= 导航 / 通用 ================= */
+function fabAction(){ openAddSheet(); }
+function openAddSheet(){
+  const n = db.cars.length;
+  document.getElementById('addOptExp').style.display = n ? 'flex' : 'none';
+  openMask('maskAdd');
+}
+function addPick(kind){
+  closeMask('maskAdd');
+  if(kind==='asset') return openAssetForm();
+  if(kind==='addcar') return openCarProfileForm();
+  if(kind==='exp'){
+    const servedCars = db.cars.filter(c=>(c.profile.status||'served')==='served');
+    if(!servedCars.length) return toast('没有服役中的车辆，先添加或恢复一辆');
+    if(servedCars.length===1) return openCarExpForm(servedCars[0].id);
+    document.getElementById('pickCarList').innerHTML = servedCars.map(c=>`
+      <div class="add-opt" onclick="closeMask('maskPickCar');openCarExpForm('${c.id}')">
+        <div class="ic" style="background:#f1f2f6">${c.profile.energy==='moto'?'🏍':'🚗'}</div>
+        <div><div class="t">${esc(c.profile.model)}</div>
+        <div class="d">${energyLabel(c.profile.energy)} · ${c.expenses.length} 笔账单</div></div>
+      </div>`).join('');
+    openMask('maskPickCar');
+  }
+}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on', el.dataset.tab===t));
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('on'));
+  document.getElementById('page-'+t).classList.add('on');
+  document.querySelector('.fab').style.display = t==='wish'?'none':'flex';
+  window.scrollTo(0,0);
+}
+function openMask(id){ document.getElementById(id).classList.add('on'); }
+function closeMask(id){ document.getElementById(id).classList.remove('on'); }
+document.querySelectorAll('.mask').forEach(m=>m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('on'); }));
+function openSettings(){ openMask('maskSettings'); }
+function exportData(){
+  const blob = new Blob([JSON.stringify(db,null,2)], {type:'application/json'});
+  const aEl = document.createElement('a');
+  aEl.href = URL.createObjectURL(blob); aEl.download = 'youzhang-backup-'+today()+'.json'; aEl.click();
+  toast('已导出备份文件');
+}
+function clearAll(){
+  if(!confirm('确定清空全部数据？此操作不可恢复！')) return;
+  db = {assets:[], wishes:[], cars:[], demo:false}; save(); closeMask('maskSettings'); renderAll(); toast('已清空');
+}
+function loadDemo(){
+  if(db.demo && !confirm('示例数据已载入过，继续将追加爱车示例，继续？')) return;
+  const D = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
+  if(!db.demo){
+    db.assets.push(
+      {id:'d1', name:'iPhone 15 Pro', cat:'digital', price:8799, buyDate:D(999), value:4200, extra:236, target:8, place:'随身', tags:'主力机', status:'served'},
+      {id:'d2', name:'Sony A7M4 相机', cat:'digital', price:14500, buyDate:D(420), value:10800, extra:560, target:15, place:'防潮箱', tags:'轻摄影', status:'served'},
+      {id:'d3', name:'周大福金条 20g', cat:'hard', price:9600, buyDate:D(680), value:13400, extra:80, target:0, place:'保险柜', tags:'保值', status:'served'},
+      {id:'d4', name:'Switch OLED', cat:'digital', price:2280, buyDate:D(300), sellPrice:1499, sellDate:D(60), extra:0, target:0, place:'', tags:'吃灰', status:'sold'},
+      {id:'d5', name:'劳力士潜航者', cat:'lux', price:72000, buyDate:D(1500), value:98000, extra:1200, target:0, place:'保险柜', tags:'理财', status:'served'},
+    );
+    db.wishes.push(
+      {id:'dw1', name:'MacBook Air M4', price:9499, deadline:'', saved:3200, rent:0, done:false},
+      {id:'dw2', name:'健身年卡', price:3280, deadline:D(-180), saved:800, rent:280, done:false},
+    );
+  }
+  if(!db.cars.length){
+    db.cars.push({id:'dcar1', profile:{model:'特斯拉 Model Y 后驱版', price:263500, buyDate:D(180), value:228000, energy:'ev', used:false, depRate:0, buyOdo:0, curOdo:6800, photo:null}, expenses:[
+      {id:'ce1', type:'charge', amount:38.5,  date:D(2),   odo:6780, note:'家充谷电 82度'},
+      {id:'ce2', type:'charge', amount:56.2,  date:D(9),   odo:6520, note:'超充 120度'},
+      {id:'ce3', type:'maint',  amount:0,     date:D(15),  odo:6300, note:'首检免费'},
+      {id:'ce4', type:'trip',   amount:268,   date:D(20),  odo:5900, note:'周末自驾 · 门票+过路费'},
+      {id:'ce5', type:'charge', amount:41.8,  date:D(26),  odo:5400, note:''},
+      {id:'ce6', type:'insure', amount:6200,  date:D(175), odo:120,  note:'首年保险（交强+商业）'},
+      {id:'ce7', type:'mod',    amount:1280,  date:D(120), odo:2400, note:'全车贴膜'},
+      {id:'ce8', type:'maint',  amount:320,   date:D(60),  odo:4100, note:'空调滤芯+雨刮'},
+      {id:'ce9', type:'trip',   amount:96,    date:D(40),  odo:4600, note:'高速过路费'},
+    ]});
+    db.cars.push({id:'dcar2', profile:{model:'春风 450SR 摩托车', price:35800, buyDate:D(90), value:0, energy:'moto', used:false, depRate:0, buyOdo:0, curOdo:2100, photo:null}, expenses:[
+      {id:'ce10', type:'fuel',  amount:95.0,  date:D(3),  odo:2050, note:'加油 12.5 升'},
+      {id:'ce11', type:'mod',   amount:680,   date:D(30), odo:300,  note:'头盔 + 骑行手套'},
+      {id:'ce12', type:'insure',amount:1420,  date:D(88), odo:60,   note:'交强险+商业险'},
+    ]});
+  }
+  db.demo = true; save(); closeMask('maskSettings'); renderAll(); toast('示例数据已载入 🚗');
+  switchTab('assets');
+}
+function renderAll(){ renderDash(); renderAssets(); renderWish(); }
+
+load();
+if(!db.assets.length && !localStorage.getItem(LS_KEY+'_hinted')){
+  localStorage.setItem(LS_KEY+'_hinted','1');
+  loadDemo();
+}
+renderAll();
+</script>
+</body>
+</html>
