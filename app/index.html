@@ -280,7 +280,7 @@
   <div class="section" style="padding-top:4px">
     <div class="net-value-card">
       <div>
-        <div class="label">总资产净值（在持估值合计）</div>
+        <div class="label">总资产（在持购入价合计）</div>
         <div class="value"><small>¥</small><span id="netValue">0.00</span></div>
       </div>
       <div class="sub">
@@ -359,7 +359,6 @@
     <div class="form-grid">
       <div class="f-item"><label>购入价格 ¥ *</label><input id="fPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
       <div class="f-item"><label>购入日期 *</label><input id="fBuyDate" type="date"></div>
-      <div class="f-item"><label>当前估值 ¥</label><input id="fValue" type="number" inputmode="decimal" placeholder="默认=购入价"></div>
       <div class="f-item"><label>附加开销 ¥</label><input id="fExtra" type="number" inputmode="decimal" placeholder="保养/维修等"></div>
       <div class="f-item"><label>目标日耗 ¥/天</label><input id="fTarget" type="number" inputmode="decimal" placeholder="回本线"></div>
       <div class="f-item"><label>存放位置</label><input id="fPlace" placeholder="如：书桌抽屉"></div>
@@ -396,7 +395,7 @@
     <div class="form-grid">
       <div class="f-item"><label>退役日期</label><input id="rDate" type="date"></div>
     </div>
-    <div class="hint">退役后停止累计持有天数，估值按 0 计（残值归零，成本全部计入消费）。</div>
+    <div class="hint">退役后停止累计持有天数，资产价值按 0 计；卖出则按成交价回血并结算真实日耗。</div>
     <button class="btn" onclick="confirmRetire()">确认退役</button>
     <button class="btn ghost" onclick="closeMask('maskRetire')">取消</button>
   </div>
@@ -584,15 +583,13 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 /* 核心算法：真实日均成本 */
 function calc(a){
   const end = a.status==='served' ? today() : (a.status==='retired' ? (a.retireDate||today()) : (a.sellDate||today()));
-  const days = daysBetween(a.buyDate, end);
+  const days = Math.max(1, daysBetween(a.buyDate, end));
   const invested = num(a.price) + num(a.extra);
-  let residual, pnl = null;
-  if(a.status==='sold'){ residual = num(a.sellPrice); pnl = num(a.sellPrice) - invested; }
-  else if(a.status==='retired'){ residual = 0; }
-  else residual = num(a.value) > 0 ? num(a.value) : num(a.price);
+  let residual = 0, pnl = null;
+  if(a.status==='sold'){ residual = num(a.sellPrice); pnl = residual - invested; }
   const netCost = invested - residual;
   const daily = netCost / days;
-  const recovered = num(a.status==='sold' ? a.sellPrice : (num(a.value)>0 ? num(a.value):0));
+  const recovered = a.status==='sold' ? num(a.sellPrice) : 0;
   return {days, invested, residual, netCost, daily, pnl, recovered,
           hitTarget: a.target>0 && daily <= a.target && (a.status!=='served' ? true : days>7)};
 }
@@ -603,7 +600,7 @@ function renderDash(){
   const act = db.assets.filter(a=>a.status!=='sold' && a.status!=='retired');
   const carStatList = db.cars.map(c=>({c, s:carStats(c)}));
   const carResidual = carStatList.filter(x=>x.s.status==='served').reduce((s,x)=>s+x.s.residual,0);
-  const net = act.reduce((s,a)=>s+calc(a).residual,0) + carResidual;
+  const net = act.reduce((s,a)=>s+num(a.price),0) + carResidual;
   const invest = db.assets.reduce((s,a)=>s+calc(a).invested,0) + db.cars.reduce((s,c)=>s+num(c.profile.price),0);
   const recov = db.assets.reduce((s,a)=>s+calc(a).recovered,0) + db.cars.reduce((s,c)=>s+(c.profile.status==='sold'?num(c.profile.sellPrice):0),0);
   const days = db.assets.reduce((s,a)=>s+calc(a).days,0) + carStatList.reduce((s,x)=>s+x.s.days,0);
@@ -642,9 +639,9 @@ function renderDash(){
   }
 
   // 日均成本排行（在持资产 + 在持爱车）
-  let rank = db.assets.filter(a=>a.status==='served').map(a=>({a, daily:calc(a).daily, days:calc(a).days, netCost:calc(a).netCost}));
+  let rank = db.assets.filter(a=>a.status==='served').map(a=>({a, daily:calc(a).daily, days:calc(a).days, netCost:calc(a).invested, costLabel:'总投入'}));
   carStatList.filter(x=>x.s.status==='served').forEach(({c,s})=>{
-    rank.push({car:c, daily:s.daily, days:s.days, netCost:num(c.profile.price)-s.residual+s.totalExp});
+    rank.push({car:c, daily:s.daily, days:s.days, netCost:num(c.profile.price)-s.residual+s.totalExp, costLabel:'已消费'});
   });
   rank = rank.sort((x,y)=>y.daily-x.daily).slice(0,5);
   document.getElementById('rankList').innerHTML = rank.length ? rank.map(r=>{
@@ -658,7 +655,7 @@ function renderDash(){
     <div class="rank-item" onclick="${click}">
       <div class="emoji" ${isCar?'style="background:#3a4358"':''}>${icon}</div>
       <div class="info"><div class="nm">${nm}</div>
-        <div class="meta">持有 ${r.days} 天 · 已消费 ¥${fmt(r.netCost)}</div></div>
+        <div class="meta">持有 ${r.days} 天 · ${r.costLabel} ¥${fmt(r.netCost)}</div></div>
       <div class="cost"><div class="v">¥${fmt(r.daily)}</div><div class="d">${isCar?'日均持有成本':'日均成本'}</div></div>
     </div>`;
   }).join('') : '<div class="empty" style="padding:26px 0"><div class="e">◧</div><p>添加资产后，这里展示谁最「烧钱」</p></div>';
@@ -726,7 +723,9 @@ function renderAssets(){
     const costHtml = a.status==='sold'
       ? `<div class="cost ${c.pnl>=0?'pnl-up':'pnl-down'}">${c.pnl>=0?'+':''}¥${fmt(c.pnl)}<small> 卖出盈亏</small></div>`
       : `<div class="cost">¥${fmt(c.daily)}<small> /天 日均成本</small></div>`;
-    const prog = Math.min(100, Math.max(6, c.residual/Math.max(c.invested,1)*100));
+    const prog = a.status!=='served' ? 100
+      : (a.target>0 ? Math.min(100, Math.max(5, c.days/Math.max(1, c.invested/a.target)*100))
+                    : Math.min(100, Math.max(5, c.days/365*100)));
     const endD = a.status==='served'?today():(a.status==='retired'?(a.retireDate||today()):(a.sellDate||today()));
     return `<div class="g-card" onclick="openDetail('${a.id}')">
       <div class="img">${a.photo?`<img src="${a.photo}">`:cat.emoji}${stBadge}</div>
@@ -767,7 +766,7 @@ function openDetail(id){
     </div>
     <div class="kpis">
       <div class="kpi"><div class="v">¥${fmt(c.daily)}</div><div class="l">日均成本</div></div>
-      <div class="kpi"><div class="v">¥${fmt(c.netCost)}</div><div class="l">已消费金额</div></div>
+      <div class="kpi"><div class="v">¥${fmt(c.invested)}</div><div class="l">总投入（按天摊销）</div></div>
       ${a.status==='sold'
         ? `<div class="kpi"><div class="v ${c.pnl>=0?'up':'down'}">${c.pnl>=0?'+':''}¥${fmt(c.pnl)}</div><div class="l">卖出盈亏</div></div>`
         : `<div class="kpi"><div class="v">${a.target>0?(c.hitTarget?'✅ 回本':Math.round(c.daily/a.target*100)+'%'):'—'}</div><div class="l">${a.target>0?'回本进度(目标¥'+a.target+'/天)':'未设目标日耗'}</div></div>`}
@@ -777,9 +776,9 @@ function openDetail(id){
       <div class="d-row"><span>附加开销（保养/维修）</span><b>¥${fmt(a.extra)}</b></div>
       <div class="d-row"><span>总投入</span><b>¥${fmt(c.invested)}</b></div>
       ${a.status==='sold'
-        ? `<div class="d-row"><span>卖出价格（${a.sellDate||'—'}）</span><b>¥${fmt(a.sellPrice)}</b></div>`
-        : `<div class="d-row"><span>当前估值</span><b>¥${fmt(num(a.value)>0?a.value:a.price)}</b></div>`}
-      <div class="d-row"><span>剩余残值 / 回血</span><b>¥${fmt(c.residual)}</b></div>
+        ? `<div class="d-row"><span>卖出价格（${a.sellDate||'—'}）</span><b>¥${fmt(a.sellPrice)}</b></div>
+           <div class="d-row"><span>卖出回血</span><b>¥${fmt(c.residual)}</b></div>`
+        : `<div class="d-row"><span>当前日均成本</span><b>¥${fmt(c.daily)} <small style="color:var(--ink3)">（按持有 ${c.days} 天摊销）</small></b></div>`}
       <div class="d-row"><span>资产状态</span><b>${a.status==='served'?'🟢 服役中':a.status==='retired'?'⚪ 已退役':'🟡 已卖出'}</b></div>
     </div>
     ${actions}
@@ -809,7 +808,6 @@ function openAssetForm(id){
   document.getElementById('fName').value = a?.name||'';
   document.getElementById('fPrice').value = a?.price??'';
   document.getElementById('fBuyDate').value = a?.buyDate||today();
-  document.getElementById('fValue').value = a?.value??'';
   document.getElementById('fExtra').value = a?.extra??'';
   document.getElementById('fTarget').value = a?.target??'';
   document.getElementById('fPlace').value = a?.place||'';
@@ -849,7 +847,7 @@ function saveAsset(){
   if(!buyDate) return toast('请选择购入日期');
   const data = {
     name, price, buyDate, cat:curCat,
-    value: parseFloat(document.getElementById('fValue').value)||0,
+    value: 0,
     extra: parseFloat(document.getElementById('fExtra').value)||0,
     target: parseFloat(document.getElementById('fTarget').value)||0,
     place: document.getElementById('fPlace').value.trim(),
@@ -1306,11 +1304,11 @@ function loadDemo(){
   const D = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
   if(!db.demo){
     db.assets.push(
-      {id:'d1', name:'iPhone 15 Pro', cat:'digital', price:8799, buyDate:D(999), value:4200, extra:236, target:8, place:'随身', tags:'主力机', status:'served'},
-      {id:'d2', name:'Sony A7M4 相机', cat:'digital', price:14500, buyDate:D(420), value:10800, extra:560, target:15, place:'防潮箱', tags:'轻摄影', status:'served'},
-      {id:'d3', name:'周大福金条 20g', cat:'hard', price:9600, buyDate:D(680), value:13400, extra:80, target:0, place:'保险柜', tags:'保值', status:'served'},
+      {id:'d1', name:'iPhone 15 Pro', cat:'digital', price:8799, buyDate:D(999), extra:236, target:8, place:'随身', tags:'主力机', status:'served'},
+      {id:'d2', name:'Sony A7M4 相机', cat:'digital', price:14500, buyDate:D(420), extra:560, target:15, place:'防潮箱', tags:'轻摄影', status:'served'},
+      {id:'d3', name:'周大福金条 20g', cat:'hard', price:9600, buyDate:D(680), extra:80, target:0, place:'保险柜', tags:'保值', status:'served'},
       {id:'d4', name:'Switch OLED', cat:'digital', price:2280, buyDate:D(300), sellPrice:1499, sellDate:D(60), extra:0, target:0, place:'', tags:'吃灰', status:'sold'},
-      {id:'d5', name:'劳力士潜航者', cat:'lux', price:72000, buyDate:D(1500), value:98000, extra:1200, target:0, place:'保险柜', tags:'理财', status:'served'},
+      {id:'d5', name:'劳力士潜航者', cat:'lux', price:72000, buyDate:D(1500), extra:1200, target:0, place:'保险柜', tags:'理财', status:'served'},
     );
     db.wishes.push(
       {id:'dw1', name:'MacBook Air M4', price:9499, deadline:'', saved:3200, rent:0, done:false},
