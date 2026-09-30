@@ -534,9 +534,11 @@
   <div class="sheet">
     <h2>设置</h2>
     <div class="set-item" onclick="exportData()"><span>📤 导出数据 (JSON)</span><span class="r">备份用</span></div>
+    <div class="set-item" onclick="document.getElementById('importInput').click()"><span>📥 导入数据 (JSON)</span><span class="r">覆盖当前数据</span></div>
+    <input type="file" id="importInput" accept=".json,application/json" style="display:none">
     <div class="set-item" onclick="loadDemo()"><span>🧪 载入示例数据</span><span class="r">体验用</span></div>
     <div class="set-item" onclick="clearAll()"><span style="color:var(--up)">🗑 清空全部数据</span><span class="r">不可恢复</span></div>
-    <div class="hint" style="margin-top:14px">数据仅保存在本机浏览器（localStorage），不上传服务器。换设备可通过「导出数据」备份。· 有账 v1.0 (OpenLedger) · 开源个人资产管理工具</div>
+    <div class="hint" style="margin-top:14px">数据仅保存在本机，不上传服务器。换机/重装前先「导出数据」备份，装好后「导入数据」恢复。· 有账 v1.0 (OpenLedger) · 开源个人资产管理工具</div>
     <button class="btn ghost" onclick="closeMask('maskSettings')">关闭</button>
   </div>
 </div>
@@ -1338,12 +1340,49 @@ function openMask(id){ document.getElementById(id).classList.add('on'); }
 function closeMask(id){ document.getElementById(id).classList.remove('on'); }
 document.querySelectorAll('.mask').forEach(m=>m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('on'); }));
 function openSettings(){ openMask('maskSettings'); }
-function exportData(){
-  const blob = new Blob([JSON.stringify(db,null,2)], {type:'application/json'});
+async function exportData(){
+  const json = JSON.stringify(db,null,2);
+  const fname = 'youzhang-backup-'+today()+'.json';
+  // 安卓 APP 内：走系统分享（可保存到「文件」或发给自己），WebView 不支持 Blob 下载
+  try{
+    const file = new File([json], fname, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:fname});
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; } // 用户取消分享
+  // 浏览器回退：直接下载
+  const blob = new Blob([json], {type:'application/json'});
   const aEl = document.createElement('a');
-  aEl.href = URL.createObjectURL(blob); aEl.download = 'youzhang-backup-'+today()+'.json'; aEl.click();
+  aEl.href = URL.createObjectURL(blob); aEl.download = fname; aEl.click();
   toast('已导出备份文件');
 }
+function importData(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data || typeof data!=='object' || !Array.isArray(data.assets)) return toast('格式不对：请选择本应用导出的 JSON');
+      const desc = `${data.assets.length} 件资产、${(data.cars||[]).length} 辆车、${(data.wishes||[]).length} 个心愿`;
+      if(!confirm(`导入将覆盖当前全部数据（${desc}），确定继续？`)) return;
+      db = data;
+      // 旧结构兼容（与 load 一致）
+      if(Array.isArray(db.cars)){ /* 新结构 */ }
+      else if(db.car && db.car.profile){ db.cars = [{id:'c'+Date.now(), profile:db.car.profile, expenses:db.car.expenses||[]}]; }
+      else db.cars = [];
+      delete db.car;
+      if(!db.assets) db.assets = [];
+      if(!db.wishes) db.wishes = [];
+      db.cars.forEach(c=>{ if(!c.profile.status) c.profile.status='served'; });
+      save(); closeMask('maskSettings'); renderAll(); toast('导入成功 ✅');
+    }catch(e){ toast('导入失败：文件无法解析'); }
+  };
+  reader.readAsText(file);
+}
+document.getElementById('importInput').addEventListener('change', e=>{
+  importData(e.target.files[0]); e.target.value='';
+});
 function clearAll(){
   if(!confirm('确定清空全部数据？此操作不可恢复！')) return;
   db = {assets:[], wishes:[], cars:[], demo:false}; save(); closeMask('maskSettings'); renderAll(); toast('已清空');
