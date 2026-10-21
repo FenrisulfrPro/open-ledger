@@ -386,7 +386,7 @@
 <main class="page" id="page-loan">
   <div class="section" style="padding-top:4px">
     <div class="loan-hero">
-      <div class="lb">待还总额（未结清期数合计）</div>
+      <div class="lb">待还总额（未结清金额合计）</div>
       <div class="lv"><small>¥</small><span id="loanPending">0.00</span></div>
       <div class="lm" id="loanHeroMeta"></div>
     </div>
@@ -396,6 +396,7 @@
       <div class="stat-cell"><div class="num" id="loanPaidCnt">0</div><div class="txt">已还期数</div></div>
       <div class="stat-cell"><div class="num" id="loanLeftCnt">0</div><div class="txt">剩余期数</div></div>
     </div>
+    <div class="hint" style="padding:2px 4px 0">期数按<b>最长账单</b>计算：多平台同月并行还款，不累加各平台期数</div>
   </div>
   <div class="section">
     <div class="section-title"><h3>未来 6 个月还款预测</h3><span class="more">按已录期数汇总</span></div>
@@ -1474,8 +1475,18 @@ function renderLoans(){
   const ls = db.loans||[], y = ymNow();
   const pending = ls.reduce((s,l)=>s+loanPending(l),0);
   const dueNow = ls.reduce((s,l)=>s+loanDueIn(l,y),0);
-  const paidCnt = ls.reduce((s,l)=>s+loanPaidCnt(l),0);
-  const leftCnt = ls.reduce((s,l)=>s+loanLeftCnt(l),0);
+  // 多平台同月并行还款：期数不能各平台累加，一律以「最长账单链」为基准
+  // （最长的链 = 未还期数最多者；并列时取总期数更多者）
+  let longest = null;
+  ls.forEach(l=>{
+    if(!longest) { longest=l; return; }
+    const a = loanLeftCnt(l), b = loanLeftCnt(longest);
+    if(a>b || (a===b && periodsOf(l).length>periodsOf(longest).length)) longest = l;
+  });
+  const paidCnt = longest ? loanPaidCnt(longest) : 0;   // 已还期数 = 最长链已还
+  const leftCnt = longest ? loanLeftCnt(longest) : 0;   // 剩余期数 = 最长链未还
+  // 全部结清月份：所有未还期次里最晚的一个月
+  const endYm = ls.reduce((mx,l)=>periodsOf(l).filter(p=>!p.paid).reduce((m2,p)=>p.ym>m2?p.ym:m2, mx), '');
   const lateAll = ls.reduce((s,l)=>s+loanLateCnt(l),0);
   document.getElementById('loanPending').textContent = fmt(pending);
   document.getElementById('loanCnt').textContent = ls.length;
@@ -1487,7 +1498,7 @@ function renderLoans(){
   const max = Math.max.apply(null, rows.map(r=>r.amt).concat([0]));
   const peak = rows.reduce((a,b)=>b.amt>a.amt?b:a, rows[0]);
   document.getElementById('loanHeroMeta').innerHTML = ls.length
-    ? `${ymLabel(y)}应还 <b>¥${fmt(dueNow)}</b> · ${leftCnt} 期未还<br>还款峰值 ${ymLabel(peak.ym)} ¥${fmt(peak.amt)}${lateAll?` · <span style="color:#ffb4b4">⚠ ${lateAll} 期已逾期</span>`:''}`
+    ? `${ymLabel(y)}应还 <b>¥${fmt(dueNow)}</b> · 最长还剩 ${leftCnt} 期${endYm?`（${ymLabel(endYm)}结清）`:''}<br>还款峰值 ${ymLabel(peak.ym)} ¥${fmt(peak.amt)}${lateAll?` · <span style="color:#ffb4b4">⚠ ${lateAll} 期已逾期</span>`:''}`
     : '还没有账单，点右下角 + 添加你的第一笔分期 / 贷款';
   document.getElementById('loanForecast').innerHTML = rows.map((r,i)=>`
     <div class="fc-row">
