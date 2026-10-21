@@ -110,6 +110,57 @@
   .wish-card .pbar{width:100%;margin-top:10px}
   .wish-card .pbar i{background:linear-gradient(90deg,var(--gold),#e8c46a)}
   .wish-done{opacity:.55}
+  /* ===== 分期 / 贷款账单 ===== */
+  .loan-hero{margin-top:10px;background:linear-gradient(135deg,#2b3242,#4a5570);border-radius:20px;padding:18px;color:#fff;box-shadow:0 6px 20px rgba(43,50,66,.28)}
+  .loan-hero .lb{font-size:12px;opacity:.75;margin-bottom:6px}
+  .loan-hero .lv{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .loan-hero .lv small{font-size:16px;font-weight:700;margin-right:2px;opacity:.85}
+  .loan-hero .lm{font-size:11.5px;opacity:.75;margin-top:8px;line-height:1.8}
+  .loan-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;margin:0 16px 12px;cursor:pointer}
+  .loan-card.is-done{opacity:.6}
+  .loan-card .top{display:flex;align-items:center;justify-content:space-between}
+  .loan-card .nm{font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px;min-width:0}
+  .loan-card .nm .st{font-size:9px;background:var(--down);color:#fff;border-radius:5px;padding:1px 6px;font-weight:700;flex:none}
+  .loan-card .amt{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+  .loan-card .row2{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink3);margin-top:8px}
+  .loan-card .row2 b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .loan-card .row2 .warn{color:var(--up);font-weight:700}
+  .loan-card .row2 .ok{color:var(--down);font-weight:700}
+  .loan-card .pbar{width:100%;margin-top:10px}
+  .loan-card .pbar i{background:linear-gradient(90deg,var(--gold),#e8c46a)}
+  /* 还款预测 */
+  .fc-row{display:flex;align-items:center;gap:10px;padding:7px 0}
+  .fc-row .m{width:58px;font-size:11.5px;color:var(--ink2);flex:none}
+  .fc-row .m i{font-style:normal;font-size:9px;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:1px 4px;margin-left:3px;font-weight:700}
+  .fc-row .track{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+  .fc-row .track i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#e5484d,#ff8f8f)}
+  .fc-row .v{width:80px;text-align:right;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+  /* 账单期数明细 */
+  .bill-row{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);transition:background .18s}
+  .bill-row:last-child{border-bottom:none}
+  .bill-row:active{background:#f4f6fa}
+  .bill-row .bx{width:23px;height:23px;border-radius:8px;border:1.6px solid var(--line);background:#fafbfc;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:transparent;flex:none;transition:.18s}
+  .bill-row .d{flex:1;font-size:13px;font-weight:600}
+  .bill-row .d small{display:block;font-size:10px;color:var(--ink3);font-weight:400;margin-top:2px}
+  .bill-row .a{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+  /* 已还：绿底打勾 + 整行浅绿底 + 金额划线 */
+  .bill-row.is-paid{background:#f2faf7}
+  .bill-row.is-paid .bx{background:var(--down);border-color:var(--down);color:#fff}
+  .bill-row.is-paid .d{color:var(--ink3)}
+  .bill-row.is-paid .d small{color:var(--down);font-weight:700}
+  .bill-row.is-paid .a{text-decoration:line-through;color:var(--ink3)}
+  /* 本月应还：橙色描边提示 */
+  .bill-row.is-due{background:#fffaf0}
+  .bill-row.is-due .bx{border-color:var(--warn);background:#fff6e3}
+  .bill-row.is-due .d small{color:var(--gold);font-weight:700}
+  /* 已逾期未还：红色描边 + 浅红底 */
+  .bill-row.is-late{background:#fdf3f3}
+  .bill-row.is-late .bx{border-color:var(--up);background:#fdeeee}
+  .bill-row.is-late .d small{color:var(--up);font-weight:700}
+  .mini-list{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+  .check-line{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);padding:10px 0 2px}
+  .check-line input{width:18px;height:18px;accent-color:var(--accent)}
   /* ===== 底部导航 ===== */
   .tabbar{
     position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:60;
@@ -331,12 +382,38 @@
   </div>
 </main>
 
+<!-- ================= 分期 / 账单 ================= -->
+<main class="page" id="page-loan">
+  <div class="section" style="padding-top:4px">
+    <div class="loan-hero">
+      <div class="lb">待还总额（未结清期数合计）</div>
+      <div class="lv"><small>¥</small><span id="loanPending">0.00</span></div>
+      <div class="lm" id="loanHeroMeta"></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="num" id="loanCnt">0</div><div class="txt">账单平台</div></div>
+      <div class="stat-cell"><div class="num" id="loanDueNow">0</div><div class="txt">本月应还</div></div>
+      <div class="stat-cell"><div class="num" id="loanPaidCnt">0</div><div class="txt">已还期数</div></div>
+      <div class="stat-cell"><div class="num" id="loanLeftCnt">0</div><div class="txt">剩余期数</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title"><h3>未来 6 个月还款预测</h3><span class="more">按已录期数汇总</span></div>
+    <div class="card" id="loanForecast"></div>
+  </div>
+  <div class="section">
+    <div class="section-title"><h3>账单平台</h3><span class="more" style="cursor:pointer" onclick="openLoanForm()">+ 添加账单</span></div>
+    <div id="loanList"></div>
+  </div>
+</main>
+
 <div class="fab" onclick="fabAction()">+</div>
 
 <nav class="tabbar">
   <div class="tab on" data-tab="assets" onclick="switchTab('assets')"><span class="ic">◈</span>资产</div>
   <div class="tab" data-tab="dash" onclick="switchTab('dash')"><span class="ic">◧</span>成本核算</div>
   <div class="tab" data-tab="wish" onclick="switchTab('wish')"><span class="ic">☆</span>心愿</div>
+  <div class="tab" data-tab="loan" onclick="switchTab('loan')"><span class="ic">▤</span>账单</div>
 </nav>
 
 <!-- 资产 表单 -->
@@ -429,6 +506,46 @@
     <div class="hint">填写期限后，自动计算「每天需攒多少钱」；填写租金后，对比买断与租赁的回本周期。</div>
     <button class="btn" onclick="saveWish()">保存</button>
     <button class="btn ghost" onclick="closeMask('maskWish')">取消</button>
+  </div>
+</div>
+
+<!-- 账单表单 -->
+<div class="mask" id="maskLoan">
+  <div class="sheet">
+    <h2 id="loanFormTitle">添加账单 / 分期</h2>
+    <div class="f-item"><label>平台名称 *</label><input id="loName" placeholder="如：京东白条 / 花呗 / 抖音月付"></div>
+    <div class="form-grid">
+      <div class="f-item"><label>账单总额 ¥ *</label><input id="loTotal" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="f-item"><label>每期金额 ¥</label><input id="loPer" type="number" inputmode="decimal" placeholder="留空则自动均分"></div>
+      <div class="f-item"><label>每月还款日</label><input id="loDay" type="number" inputmode="numeric" placeholder="如 24"></div>
+      <div class="f-item"><label>总期数</label><input id="loTimes" type="number" inputmode="numeric" placeholder="如 12"></div>
+      <div class="f-item"><label>首期月份</label><input id="loStart" type="month"></div>
+      <div class="f-item"><label>结清日期</label><input id="loEnd" type="month"></div>
+    </div>
+    <div class="f-item"><label>备注</label><input id="loNote" placeholder="如：10月已还清，含未入账 ¥9.90"></div>
+    <div class="check-line"><input type="checkbox" id="loAuto"><label for="loAuto" style="margin:0;font-size:13px">按总额与期数自动生成每期计划（不勾选则进详情页逐期录入）</label></div>
+    <div class="hint">录入总额后可在账单详情里逐期填写金额、勾选已还；未来 6 个月还款预测会同步更新。</div>
+    <button class="btn" onclick="saveLoan()">保存</button>
+    <button class="btn ghost" onclick="closeMask('maskLoan')">取消</button>
+  </div>
+</div>
+
+<!-- 账单详情 -->
+<div class="mask" id="maskLoanView">
+  <div class="sheet" id="loanSheet"></div>
+</div>
+
+<!-- 单期编辑 -->
+<div class="mask" id="maskPeriod">
+  <div class="sheet">
+    <h2 id="periodFormTitle">添加一期</h2>
+    <div class="form-grid">
+      <div class="f-item"><label>账单月份 *</label><input id="peYm" type="month"></div>
+      <div class="f-item"><label>应还金额 ¥ *</label><input id="peAmt" type="number" inputmode="decimal" placeholder="0.00"></div>
+    </div>
+    <div class="check-line"><input type="checkbox" id="pePaid"><label for="pePaid" style="margin:0;font-size:13px">该期已还</label></div>
+    <button class="btn" onclick="savePeriod()">保存</button>
+    <button class="btn ghost" onclick="closeMask('maskPeriod')">取消</button>
   </div>
 </div>
 
@@ -538,7 +655,7 @@
     <input type="file" id="importInput" style="display:none">
     <div class="set-item" onclick="loadDemo()"><span>🧪 载入示例数据</span><span class="r">体验用</span></div>
     <div class="set-item" onclick="clearAll()"><span style="color:var(--up)">🗑 清空全部数据</span><span class="r">不可恢复</span></div>
-    <div class="hint" style="margin-top:14px">数据仅保存在本机，不上传服务器。换机/重装前先「导出数据」备份，装好后「导入数据」恢复。· 有账 v1.0 (OpenLedger) · 开源个人资产管理工具</div>
+    <div class="hint" style="margin-top:14px">数据仅保存在本机，不上传服务器。换机/重装前先「导出数据」备份，装好后「导入数据」恢复。· 有账 v1.1 (OpenLedger) · 开源个人资产管理工具</div>
     <button class="btn ghost" onclick="closeMask('maskSettings')">关闭</button>
   </div>
 </div>
@@ -585,6 +702,7 @@ function load(){
   delete db.car;
   if(!db.assets) db.assets = [];
   if(!db.wishes) db.wishes = [];
+  if(!Array.isArray(db.loans)) db.loans = [];
   db.cars.forEach(c=>{ if(!c.profile.status) c.profile.status='served'; });
 }
 function getCar(id){ return db.cars.find(c=>c.id===id); }
@@ -1306,7 +1424,10 @@ function delCarExp(carId, id){
 }
 
 /* ================= 导航 / 通用 ================= */
-function fabAction(){ openAddSheet(); }
+function fabAction(){
+  if(document.getElementById('page-loan').classList.contains('on')) return openLoanForm();
+  openAddSheet();
+}
 function openAddSheet(){
   const n = db.cars.length;
   document.getElementById('addOptExp').style.display = n ? 'flex' : 'none';
@@ -1329,6 +1450,211 @@ function addPick(kind){
     openMask('maskPickCar');
   }
 }
+/* ================= 分期 / 贷款账单 ================= */
+let editLoanId = null, editPeriodYm = null;
+function ymNow(){ return today().slice(0,7); }
+function ymAdd(ym, i){
+  const [y,m] = String(ym).split('-').map(Number);
+  const d = new Date(y, m-1+i, 1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function ymLabel(ym){ return String(ym||'').replace('-','年')+'月'; }
+function periodsOf(l){ return l.periods||[]; }
+function loanPending(l){ return periodsOf(l).filter(p=>!p.paid).reduce((s,p)=>s+num(p.amount),0); }
+function loanPaidSum(l){ return periodsOf(l).filter(p=>p.paid).reduce((s,p)=>s+num(p.amount),0); }
+function loanPaidCnt(l){ return periodsOf(l).filter(p=>p.paid).length; }
+function loanLeftCnt(l){ return periodsOf(l).filter(p=>!p.paid).length; }
+function loanDueIn(l, ym){ return periodsOf(l).filter(p=>!p.paid && p.ym===ym).reduce((s,p)=>s+num(p.amount),0); }
+function loanNext(l){
+  return periodsOf(l).filter(p=>!p.paid).sort((a,b)=>(a.ym||'').localeCompare(b.ym||''))[0] || null;
+}
+function loanLateCnt(l){ const y=ymNow(); return periodsOf(l).filter(p=>!p.paid && p.ym<y).length; }
+
+function renderLoans(){
+  const ls = db.loans||[], y = ymNow();
+  const pending = ls.reduce((s,l)=>s+loanPending(l),0);
+  const dueNow = ls.reduce((s,l)=>s+loanDueIn(l,y),0);
+  const paidCnt = ls.reduce((s,l)=>s+loanPaidCnt(l),0);
+  const leftCnt = ls.reduce((s,l)=>s+loanLeftCnt(l),0);
+  const lateAll = ls.reduce((s,l)=>s+loanLateCnt(l),0);
+  document.getElementById('loanPending').textContent = fmt(pending);
+  document.getElementById('loanCnt').textContent = ls.length;
+  document.getElementById('loanDueNow').textContent = '¥'+fmt(dueNow);
+  document.getElementById('loanPaidCnt').textContent = paidCnt;
+  document.getElementById('loanLeftCnt').textContent = leftCnt;
+  // 未来 6 个月预测
+  const rows=[]; for(let i=0;i<6;i++){ const ym=ymAdd(y,i); rows.push({ym, amt:ls.reduce((s,l)=>s+loanDueIn(l,ym),0)}); }
+  const max = Math.max.apply(null, rows.map(r=>r.amt).concat([0]));
+  const peak = rows.reduce((a,b)=>b.amt>a.amt?b:a, rows[0]);
+  document.getElementById('loanHeroMeta').innerHTML = ls.length
+    ? `${ymLabel(y)}应还 <b>¥${fmt(dueNow)}</b> · ${leftCnt} 期未还<br>还款峰值 ${ymLabel(peak.ym)} ¥${fmt(peak.amt)}${lateAll?` · <span style="color:#ffb4b4">⚠ ${lateAll} 期已逾期</span>`:''}`
+    : '还没有账单，点右下角 + 添加你的第一笔分期 / 贷款';
+  document.getElementById('loanForecast').innerHTML = rows.map((r,i)=>`
+    <div class="fc-row">
+      <div class="m">${r.ym.slice(2).replace('-','/')}${i===0?'<i>本月</i>':''}</div>
+      <div class="track"><i style="width:${max?Math.max(3,r.amt/max*100):0}%"></i></div>
+      <div class="v">${r.amt?'¥'+fmt(r.amt):'—'}</div>
+    </div>`).join('');
+  // 平台列表
+  const el = document.getElementById('loanList');
+  if(!ls.length){ el.innerHTML='<div class="empty"><div class="e">▤</div><p>添加花呗、白条、车贷等账单<br>自动算出每月要还多少</p></div>'; return; }
+  el.innerHTML = ls.map(l=>{
+    const next = loanNext(l), late = loanLateCnt(l);
+    const prog = l.total>0 ? Math.min(100, loanPaidSum(l)/l.total*100) : 0;
+    const done = periodsOf(l).length>0 && loanLeftCnt(l)===0;
+    const badge = done ? '<span class="st">已结清</span>' : '';
+    const line2 = next
+      ? `<span>下期 ${ymLabel(next.ym)} <b>¥${fmt(next.amount)}</b></span>`
+      : `<span class="ok">${periodsOf(l).length? '全部期次已还清' : '未录入期次'}</span>`;
+    return `<div class="loan-card ${done?'is-done':''}" onclick="openLoanSheet('${l.id}')">
+      <div class="top"><div class="nm">${esc(l.name)}${badge}</div>
+        <div class="amt">¥${fmt(loanPending(l))}</div></div>
+      <div class="row2"><span>账单总额 <b>¥${fmt(l.total)}</b></span><span>${l.day?`每月 ${l.day} 日还款`:'未设还款日'} · ${periodsOf(l).length} 期</span></div>
+      <div class="row2">${line2}<span class="${late?'warn':'ok'}">${late?`⚠ ${late} 期逾期`:'已还 '+loanPaidCnt(l)+' 期'}</span></div>
+      <div class="pbar"><i style="width:${prog}%"></i></div>
+    </div>`;
+  }).join('');
+}
+function genPeriods(l){
+  const per = num(l.per);
+  const times = l.times>0 ? l.times : (per>0 ? Math.ceil(l.total/per) : 0);
+  if(!times) return [];
+  const start = l.start || ymNow();
+  const each = per>0 ? per : num((l.total/times).toFixed(2));
+  const arr=[]; let rest = num(l.total);
+  for(let i=0;i<times;i++){
+    let a = each;
+    if(i===times-1) a = num(Math.max(0, rest).toFixed(2)); // 末期补齐尾差
+    rest = num((rest-a).toFixed(2));
+    arr.push({ym:ymAdd(start,i), amount:a, paid:false});
+  }
+  return arr;
+}
+function openLoanForm(id){
+  editLoanId = id||null;
+  document.getElementById('loanFormTitle').textContent = id?'编辑账单':'添加账单 / 分期';
+  const l = id? db.loans.find(x=>x.id===id):null;
+  document.getElementById('loName').value = l?.name||'';
+  document.getElementById('loTotal').value = l?.total??'';
+  document.getElementById('loPer').value = l?.per??'';
+  document.getElementById('loDay').value = l?.day??'';
+  document.getElementById('loTimes').value = l?.times??'';
+  document.getElementById('loStart').value = l?.start||ymNow();
+  document.getElementById('loEnd').value = l?.end||'';
+  document.getElementById('loNote').value = l?.note||'';
+  document.getElementById('loAuto').checked = l ? periodsOf(l).length>0 : true;
+  openMask('maskLoan');
+}
+function saveLoan(){
+  const name = document.getElementById('loName').value.trim();
+  const total = parseFloat(document.getElementById('loTotal').value);
+  if(!name) return toast('请填写平台名称');
+  if(!(total>0)) return toast('请填写有效的账单总额');
+  const data = {
+    name, total,
+    per: parseFloat(document.getElementById('loPer').value)||0,
+    day: parseInt(document.getElementById('loDay').value)||0,
+    times: parseInt(document.getElementById('loTimes').value)||0,
+    start: document.getElementById('loStart').value||ymNow(),
+    end: document.getElementById('loEnd').value||'',
+    note: document.getElementById('loNote').value.trim()
+  };
+  const auto = document.getElementById('loAuto').checked;
+  if(editLoanId){
+    const l = db.loans.find(x=>x.id===editLoanId);
+    const paidMap = {}; periodsOf(l).forEach(p=>{ if(p.paid) paidMap[p.ym]=true; });
+    Object.assign(l, data);
+    if(auto){
+      l.periods = genPeriods(l);
+      l.periods.forEach(p=>{ if(paidMap[p.ym]) p.paid=true; });
+    }
+  }else{
+    const l = {id:'l'+Date.now(), periods:[], ...data};
+    if(auto) l.periods = genPeriods(l);
+    db.loans.push(l);
+  }
+  save(); closeMask('maskLoan'); renderAll(); toast('账单已保存 💳');
+}
+function openLoanSheet(id){
+  const l = db.loans.find(x=>x.id===id); if(!l) return;
+  const y = ymNow(), late = loanLateCnt(l);
+  const pl = periodsOf(l).slice().sort((a,b)=>(a.ym||'').localeCompare(b.ym||''));
+  document.getElementById('loanSheet').innerHTML = `
+    <h2>账单详情</h2>
+    <div class="detail-head">
+      <div class="thumb" style="background:var(--gold-soft)">💳</div>
+      <div class="info"><h3>${esc(l.name)}</h3>
+        <div class="meta">${l.day?`每月 ${l.day} 日还款`:'未设还款日'} · 共 ${pl.length} 期${l.end?` · 结清 ${ymLabel(l.end)}`:''}</div></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">¥${fmt(loanPending(l))}</div><div class="l">待还</div></div>
+      <div class="kpi"><div class="v">¥${fmt(loanDueIn(l,y))}</div><div class="l">本月应还</div></div>
+      <div class="kpi"><div class="v">${loanPaidCnt(l)}/${pl.length}</div><div class="l">已还期数</div></div>
+    </div>
+    <div class="d-rows">
+      <div class="d-row"><span>账单总额</span><b>¥${fmt(l.total)}</b></div>
+      <div class="d-row"><span>每期金额</span><b>${l.per?`¥${fmt(l.per)}`:'按期录入'}</b></div>
+      <div class="d-row"><span>已还金额</span><b>¥${fmt(loanPaidSum(l))}</b></div>
+      <div class="d-row"><span>首期月份</span><b>${l.start?ymLabel(l.start):'—'}</b></div>
+      ${l.note?`<div class="d-row"><span>备注</span><b style="text-align:right;max-width:62%">${esc(l.note)}</b></div>`:''}
+      ${late?`<div class="d-row"><span style="color:var(--up)">逾期未还</span><b style="color:var(--up)">${late} 期</b></div>`:''}
+    </div>
+    <div class="section-title" style="margin:16px 0 0"><h3 style="font-size:14px">每期还款计划</h3><span class="more" style="cursor:pointer" onclick="openPeriodForm('${l.id}')">+ 添加一期</span></div>
+    ${pl.length ? `<div class="mini-list">${pl.map(p=>{
+      const isLate = !p.paid && p.ym<y, isDue = !p.paid && p.ym===y;
+      return `<div class="bill-row ${p.paid?'is-paid':''} ${isLate?'is-late':''} ${isDue?'is-due':''}" onclick="togglePeriod('${l.id}','${p.ym}')">
+        <div class="bx">✓</div>
+        <div class="d">${ymLabel(p.ym)}<small>${p.paid?'已还款':isLate?'已逾期未还':isDue?'本月应还':`${l.day||''} 日到期`}</small></div>
+        <div class="a">¥${fmt(p.amount)}</div>
+        <div style="color:var(--ink3);font-size:15px" onclick="event.stopPropagation();openPeriodForm('${l.id}','${p.ym}')">✎</div>
+      </div>`;
+    }).join('')}</div>` : '<div class="hint" style="text-align:center;padding:18px 0">还没有期次，点右上角「+ 添加一期」逐期录入</div>'}
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn ghost" onclick="openLoanForm('${l.id}')">编辑</button>
+      <button class="btn ghost" onclick="openPeriodForm('${l.id}')">添加一期</button>
+    </div>
+    <button class="btn danger" style="margin-top:10px" onclick="delLoan('${l.id}')">删除账单</button>
+    <button class="btn ghost" onclick="closeMask('maskLoanView')">关闭</button>`;
+  openMask('maskLoanView');
+}
+function togglePeriod(id, ym){
+  const l = db.loans.find(x=>x.id===id); const p = (l.periods||[]).find(x=>x.ym===ym);
+  if(!p) return;
+  p.paid = !p.paid;
+  save(); renderAll(); openLoanSheet(id);
+  toast(p.paid?`${ymLabel(ym)} 已标记还款`:`${ymLabel(ym)} 已取消还款标记`);
+}
+function openPeriodForm(id, ym){
+  const l = db.loans.find(x=>x.id===id); if(!l) return;
+  editLoanId = id; editPeriodYm = ym||null;
+  const p = ym ? (l.periods||[]).find(x=>x.ym===ym) : null;
+  document.getElementById('periodFormTitle').textContent = p?'编辑该期':'添加一期';
+  document.getElementById('peYm').value = p?.ym || ymAdd(ymNow(), periodsOf(l).length);
+  document.getElementById('peAmt').value = p?.amount ?? '';
+  document.getElementById('pePaid').checked = p?.paid||false;
+  closeMask('maskLoanView'); openMask('maskPeriod');
+}
+function savePeriod(){
+  const l = db.loans.find(x=>x.id===editLoanId); if(!l) return;
+  const ym = document.getElementById('peYm').value;
+  const amt = parseFloat(document.getElementById('peAmt').value);
+  if(!ym) return toast('请选择账单月份');
+  if(!(amt>=0)) return toast('请填写该期金额');
+  const paid = document.getElementById('pePaid').checked;
+  if(!l.periods) l.periods=[];
+  const exist = l.periods.find(x=>x.ym===ym);
+  if(exist){ exist.amount=amt; exist.paid=paid; }
+  else l.periods.push({ym, amount:amt, paid});
+  l.periods.sort((a,b)=>(a.ym||'').localeCompare(b.ym||''));
+  save(); closeMask('maskPeriod'); renderAll(); openLoanSheet(l.id); toast('期次已保存');
+}
+function delLoan(id){
+  const l = db.loans.find(x=>x.id===id); if(!l) return;
+  if(!confirm(`确定删除「${l.name}」及其 ${periodsOf(l).length} 期记录？`)) return;
+  db.loans = db.loans.filter(x=>x.id!==id);
+  save(); closeMask('maskLoanView'); renderAll(); toast('已删除');
+}
+
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on', el.dataset.tab===t));
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('on'));
@@ -1374,7 +1700,7 @@ function importData(file){
     try{
       const data = JSON.parse(reader.result);
       if(!data || typeof data!=='object' || !Array.isArray(data.assets)) return toast('格式不对：请选择本应用导出的 JSON');
-      const desc = `${data.assets.length} 件资产、${(data.cars||[]).length} 辆车、${(data.wishes||[]).length} 个心愿`;
+      const desc = `${data.assets.length} 件资产、${(data.cars||[]).length} 辆车、${(data.wishes||[]).length} 个心愿、${(data.loans||[]).length} 个账单`;
       if(!confirm(`导入将覆盖当前全部数据（${desc}），确定继续？`)) return;
       db = data;
       // 旧结构兼容（与 load 一致）
@@ -1384,6 +1710,7 @@ function importData(file){
       delete db.car;
       if(!db.assets) db.assets = [];
       if(!db.wishes) db.wishes = [];
+      if(!Array.isArray(db.loans)) db.loans = [];
       db.cars.forEach(c=>{ if(!c.profile.status) c.profile.status='served'; });
       save(); closeMask('maskSettings'); renderAll(); toast('导入成功 ✅');
     }catch(e){ toast('导入失败：文件无法解析'); }
@@ -1395,7 +1722,31 @@ document.getElementById('importInput').addEventListener('change', e=>{
 });
 function clearAll(){
   if(!confirm('确定清空全部数据？此操作不可恢复！')) return;
-  db = {assets:[], wishes:[], cars:[], demo:false}; save(); closeMask('maskSettings'); renderAll(); toast('已清空');
+  db = {assets:[], wishes:[], cars:[], loans:[], demo:false}; save(); closeMask('maskSettings'); renderAll(); toast('已清空');
+}
+function demoLoanData(){
+  return [
+    {id:'dl1', name:'抖音月付', total:516.46, per:0, times:5, day:6, start:'2026-11', end:'2027-03', note:'10月已还清；含未入账单 ¥9.90', periods:[
+      {ym:'2026-11', amount:275.58, paid:false},{ym:'2026-12', amount:86.96, paid:false},
+      {ym:'2027-01', amount:86.95, paid:false},{ym:'2027-02', amount:57.07, paid:false},
+      {ym:'2027-03', amount:9.90, paid:false}]},
+    {id:'dl2', name:'抖音放心借', total:340.41, per:0, times:2, day:6, start:'2026-11', end:'2026-12', note:'剩余2期，当前利息 ¥0.00', periods:[
+      {ym:'2026-11', amount:169.26, paid:false},{ym:'2026-12', amount:171.15, paid:false}]},
+    {id:'dl3', name:'花呗', total:2429.61, per:0, times:10, day:8, start:'2026-11', end:'2027-08', note:'账单周期较长，包含多笔分期，持续还款至 2027年8月', periods:[
+      {ym:'2026-11', amount:663.72, paid:false},{ym:'2026-12', amount:663.72, paid:false},
+      {ym:'2027-01', amount:614.47, paid:false},{ym:'2027-02', amount:174.80, paid:false},
+      {ym:'2027-03', amount:126.59, paid:false},{ym:'2027-04', amount:126.59, paid:false},
+      {ym:'2027-05', amount:14.93, paid:false},{ym:'2027-06', amount:14.93, paid:false},
+      {ym:'2027-07', amount:14.93, paid:false},{ym:'2027-08', amount:14.93, paid:false}]},
+    {id:'dl4', name:'美团月付', total:51.34, per:0, times:1, day:22, start:'2026-11', end:'2026-11', note:'2026年11月当期账单，一次性结清', periods:[
+      {ym:'2026-11', amount:51.34, paid:false}]},
+    {id:'dl5', name:'京东白条', total:3873.78, per:448.66, times:9, day:24, start:'2026-11', end:'2027-07', note:'10月已结清；每月固定还款 ¥448.66', periods:[
+      {ym:'2026-11', amount:448.66, paid:false},{ym:'2026-12', amount:448.66, paid:false},
+      {ym:'2027-01', amount:448.66, paid:false},{ym:'2027-02', amount:448.66, paid:false},
+      {ym:'2027-03', amount:448.66, paid:false},{ym:'2027-04', amount:448.66, paid:false},
+      {ym:'2027-05', amount:448.66, paid:false},{ym:'2027-06', amount:448.66, paid:false},
+      {ym:'2027-07', amount:284.50, paid:false}]},
+  ];
 }
 function loadDemo(){
   if(db.demo && !confirm('示例数据已载入过，继续将追加爱车示例，继续？')) return;
@@ -1412,7 +1763,9 @@ function loadDemo(){
       {id:'dw1', name:'MacBook Air M4', price:9499, deadline:'', saved:3200, rent:0, done:false},
       {id:'dw2', name:'健身年卡', price:3280, deadline:D(-180), saved:800, rent:280, done:false},
     );
-  }
+    }
+  if(!db.loans.length) db.loans.push(...demoLoanData());
+  db.demo = true; save(); closeMask('maskSettings'); renderAll(); toast('示例数据已载入 🚗');
   if(!db.cars.length){
     db.cars.push({id:'dcar1', profile:{model:'特斯拉 Model Y 后驱版', price:263500, buyDate:D(180), value:228000, energy:'ev', used:false, depRate:0, buyOdo:0, curOdo:6800, photo:null}, expenses:[
       {id:'ce1', type:'charge', amount:38.5,  date:D(2),   odo:6780, note:'家充谷电 82度'},
@@ -1434,12 +1787,17 @@ function loadDemo(){
   db.demo = true; save(); closeMask('maskSettings'); renderAll(); toast('示例数据已载入 🚗');
   switchTab('assets');
 }
-function renderAll(){ renderDash(); renderAssets(); renderWish(); }
+function renderAll(){ renderDash(); renderAssets(); renderWish(); renderLoans(); }
 
 load();
 if(!db.assets.length && !localStorage.getItem(LS_KEY+'_hinted')){
   localStorage.setItem(LS_KEY+'_hinted','1');
   loadDemo();
+}
+// 账单功能首次上线：一次性灌入示例账单，便于直接查看效果（删掉后不再重复灌入）
+if(!db.loans.length && !localStorage.getItem(LS_KEY+'_loansSeeded')){
+  localStorage.setItem(LS_KEY+'_loansSeeded','1');
+  db.loans.push(...demoLoanData()); save();
 }
 renderAll();
 </script>
